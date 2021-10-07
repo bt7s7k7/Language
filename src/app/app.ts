@@ -19,8 +19,7 @@ Position.prototype._s = Position.prototype[inspect.custom] = function (this: Pos
 const result = Parser.parse(new SourceFile("<anon>",
     `
 function main(argc: int) {
-    print(hello, world());
-    foo();
+    foo = (a + b) * -c
 }
 `
 ))
