@@ -1,3 +1,5 @@
+import { FuncDefNode } from "../ast/nodes/FuncDefNode"
+import { RootNode } from "../ast/nodes/RootNode"
 import { Diagnostic } from "../Diagnostic"
 import { Position } from "../Position"
 import { CharClass } from "./CharClass"
@@ -55,20 +57,20 @@ export namespace Parser {
         }
 
         function parseRoot() {
-            const ret: any[] = []
+            const rootNode = new RootNode(makePos().span(1))
             for (; ;) {
                 skipWhitespace()
                 if (willEOF()) break
 
                 if (consume("function")) {
-                    ret.push(parseFunctionStatement())
+                    rootNode.addChild(parseFunctionStatement())
                     continue
                 }
 
                 throw new ParsingFailure("Unexpected character")
             }
 
-            return ret
+            return rootNode
         }
 
         function consumeWord() {
@@ -95,7 +97,7 @@ export namespace Parser {
                 if (!consume("}")) throw new ParsingFailure(`Expected "}"`)
             } else throw new ParsingFailure("Expected function body")
 
-            return new Token(name?.span ?? start.span(1), name?.value ?? "[anonymous]")
+            return new FuncDefNode(name?.span ?? start.span(1), name?.value ?? "[anonymous]")
         }
 
         try {

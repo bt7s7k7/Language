@@ -8,7 +8,7 @@ import { stringifySpan } from "../language/util"
 
 const result = Parser.parse(new SourceFile("<anon>",
     `
-function main() {
+function main() {}
 `
 ))
 
