@@ -1,7 +1,7 @@
 import { Span } from "../../Span"
 import { ASTNode } from "../ASTNode"
 
-export class FuncDefNode extends ASTNode {
+export class IdentifierNode extends ASTNode {
     constructor(
         span: Span,
         public readonly name: string
