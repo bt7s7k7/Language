@@ -6,3 +6,14 @@ export function stringifySpan(file: SourceFile, line: number, column: number, le
 
     return line + " | " + lineText + "\n" + " ".repeat(line.toString().length + 3) + mark
 }
+
+export function stringifyValue(value: any) {
+    if (typeof value == "string") return JSON.stringify(value)
+    else if (typeof value == "object") {
+        if (!value) return "<null>"
+
+        if ("getName" in value) return value.getName()
+
+        return "[" + value.constructor.name + "]"
+    } else return value.toString()
+}

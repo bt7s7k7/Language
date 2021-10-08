@@ -1,6 +1,6 @@
 import { unreachable } from "../../comTypes/util"
 import { BlockNode } from "../ast/nodes/BlockNode"
-import { ArgumentDeclarationNode } from "../ast/nodes/DeclarationNode"
+import { DeclarationNode } from "../ast/nodes/DeclarationNode"
 import { ExpressionNode } from "../ast/nodes/ExpressionNode"
 import { FunctionDefinitionNode } from "../ast/nodes/FunctionDefinitionNode"
 import { IdentifierNode } from "../ast/nodes/IdentifierNode"
@@ -10,10 +10,8 @@ import { NumberLiteral } from "../ast/nodes/NumberLiteral"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
-import { TypeReferenceNode } from "../ast/nodes/TypeReferenceNode"
 import { Diagnostic } from "../Diagnostic"
 import { Position } from "../Position"
-import { Span } from "../Span"
 import { CharClass } from "./CharClass"
 import { SourceFile } from "./SourceFile"
 import { Token } from "./Token"
@@ -177,6 +175,8 @@ export namespace Parser {
                     }
                 }
             }
+
+            if (expression.children.length > 1) throw unreachable()
         }
 
         function parseExpression() {
@@ -187,7 +187,7 @@ export namespace Parser {
                 skipWhitespace()
 
                 const start = makePos()
-                if (!willEOF()) if (!hasTarget) {
+                if (!willEOF() && !matches("=>")) if (!hasTarget) {
                     if (consume("if")) {
                         skipWhitespace()
                         const invert = consume("not") == true
@@ -329,21 +329,15 @@ export namespace Parser {
             return block
         }
 
-        function parseType() {
-            const ret = consumeWord()
-            if (!ret) throw new ParsingFailure(`Expected type`)
-            return new TypeReferenceNode(ret.span, ret.data)
-        }
-
-        function parseDeclaration<T, R>(valueParser: () => T, ctor: new (span: Span, name: string, type?: TypeReferenceNode | null, value?: T | null) => R) {
+        function parseDeclaration() {
             const name = consumeWord()
             if (!name) throw new ParsingFailure("Expected identifier")
             skipWhitespace()
-            const type = consume(":") && (skipWhitespace(), parseType())
+            const type = consume(":") && (skipWhitespace(), parseExpression())
             skipWhitespace()
-            const value = consume("=") && (skipWhitespace(), valueParser())
+            const value = consume("=") && (skipWhitespace(), parseExpression())
 
-            return new ctor(name.span, name.data, type, value)
+            return new DeclarationNode(name.span, name.data, type, value)
         }
 
         function parseFunctionStatement() {
@@ -351,9 +345,9 @@ export namespace Parser {
             const name = consumeWord()
             const start = makePos()
             skipWhitespace()
-            const args = consume("(") ? parseEnumerated(() => parseDeclaration(parseType, ArgumentDeclarationNode), ",", ")") : []
+            const args = consume("(") ? parseEnumerated(() => parseDeclaration(), ",", ")") : []
             skipWhitespace()
-            const type = consume(":") ? (skipWhitespace(), parseType()) : null
+            const type = consume(":") ? (skipWhitespace(), parseExpression()) : null
             skipWhitespace()
             let body = consume("{") ? parseBlock("}") : null
             if (!body) {

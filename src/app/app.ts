@@ -1,13 +1,17 @@
 import chalk = require("chalk")
 import { inspect } from "util"
+import { Diagnostic } from "../language/Diagnostic"
 import { Parser } from "../language/parsing/Parser"
 import { SourceFile } from "../language/parsing/SourceFile"
 import { Position } from "../language/Position"
 import { Span } from "../language/Span"
+import { Double64 } from "../language/typing/Number"
+import { Typing } from "../language/typing/Typing"
 import { stringifySpan } from "../language/util"
 
 // @ts-ignore
 Span.prototype[inspect.custom] = function (this: Span) {
+    if (this == Span.native) return chalk.blueBright("<native>")
     return "\n" + chalk.blueBright(stringifySpan(this.pos.file, this.pos.line, this.pos.column, this.length))
 }
 
@@ -16,8 +20,8 @@ Position.prototype._s = Position.prototype[inspect.custom] = function (this: Pos
     return "\n" + chalk.blueBright(stringifySpan(this.file, this.line, this.column, 1))
 }
 
-const result = Parser.parse(new SourceFile("<anon>",
-    `
+const ast = Parser.parse(new SourceFile("<anon>",
+    /* `
  function fibonacci(i: int) {
      if (i == 0 || i == 1) return 0
      return fibonacci(i - 1) + fibonacci(i - 2)
@@ -26,7 +30,17 @@ const result = Parser.parse(new SourceFile("<anon>",
  function main() {
      return fibonacci(6)
  }
- `
+ ` */
+    `function foo(value: number): number => 5`
 ))
+if (ast instanceof Diagnostic) {
+    console.log(inspect(ast, undefined, Infinity, true))
+} else {
+    const globalScope = new Typing.Scope()
 
-console.log(inspect(result, undefined, Infinity, true))
+    globalScope.register("number", Double64.TYPE)
+
+    const scope = Typing.parse(ast, globalScope)
+
+    console.log(inspect(scope, undefined, Infinity, true))
+}
