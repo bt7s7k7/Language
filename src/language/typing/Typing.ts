@@ -1,16 +1,22 @@
 import exp = require("constants")
 import { unreachable } from "../../comTypes/util"
 import { ASTNode } from "../ast/ASTNode"
+import { BlockNode } from "../ast/nodes/BlockNode"
 import { ExpressionNode } from "../ast/nodes/ExpressionNode"
 import { FunctionDefinitionNode } from "../ast/nodes/FunctionDefinitionNode"
 import { IdentifierNode } from "../ast/nodes/IdentifierNode"
 import { NumberLiteral } from "../ast/nodes/NumberLiteral"
+import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
 import { Diagnostic } from "../Diagnostic"
+import { Span } from "../Span"
 import { Argument } from "./expressions/Argument"
+import { Block } from "./expressions/Block"
+import { Return } from "./expressions/Return"
 import { VariableDereference } from "./expressions/VariableDereference"
 import { Double64 } from "./Number"
 import { Type } from "./Type"
+import { Void } from "./types/base"
 import { ConstExpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
@@ -30,6 +36,39 @@ class ParsingError extends Error {
     }
 }
 
+function notAssignable(a: Type, b: Type, span: Span) {
+    return new Diagnostic(`Type "${a.name}" is not assignable to "${b.name}"`, span)
+}
+
+class FunctionConstruct {
+    public implicitReturnType: Type | null = null
+
+    public setReturnType(value: Return) {
+        if (this.explicitReturnType && !value.body.type.assignableTo(this.explicitReturnType)) throw new ParsingError(notAssignable(value.body.type, this.explicitReturnType, value.span))
+        if (this.implicitReturnType == null) {
+            this.implicitReturnType = value.body.type
+            return
+        }
+
+        if (value.body.type.assignableTo(this.implicitReturnType)) return
+        if (this.implicitReturnType.assignableTo(value.body.type)) {
+            this.implicitReturnType = value.body.type
+            return
+        }
+
+        throw new ParsingError(notAssignable(value.body.type, this.implicitReturnType, value.span))
+    }
+
+    constructor(
+        public readonly explicitReturnType: Type | null
+    ) { }
+}
+
+function assetValue(target: Variable | Type, span: Span) {
+    if (!(target instanceof Variable)) throw new ParsingError(new Diagnostic("Expected value", span))
+    return target
+}
+
 export namespace Typing {
     export class Scope {
         public map = new Map<string, Variable | Type>()
@@ -45,7 +84,8 @@ export namespace Typing {
         }
 
         constructor(
-            public readonly parent: Scope | null = null
+            public readonly parent: Scope | null = null,
+            public readonly construct: any = parent?.construct
         ) { }
     }
 
@@ -62,12 +102,25 @@ export namespace Typing {
                 return new VariableDereference(node.span, value)
             } else if (node instanceof NumberLiteral) {
                 return new Double64.Constant(node.span, node.value, new ConstExpr(node.span, Double64.TYPE, node.value))
+            } else if (node instanceof ReturnStatementNode) {
+                const construct = scope.construct
+                if (!(construct instanceof FunctionConstruct)) throw new ParsingError(new Diagnostic("Return can only be used in a function definition", node.span))
+                const body = parseExpressionNode(node.body, scope)
+                if (!(body instanceof Variable)) throw new ParsingError(new Diagnostic("Expected value", body.span))
+                const ret = new Return(node.span, body)
+                construct.setReturnType(ret)
+                return ret
+            } else if (node instanceof BlockNode) {
+                return new Block(node.span, node.children.map(v => assetValue(parseExpressionNode(v, scope), v.span)))
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 
         function parseFunctionDefinition(func: FunctionDefinitionNode, scope: Scope) {
             const name = func.name
-            const innerScope = new Scope(scope)
+            let resultType = func.type ? parseExpressionNode(func.type, scope) : null
+            if (resultType != null && !(resultType instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", func.type!.span))
+            const construct = new FunctionConstruct(resultType)
+            const innerScope = new Scope(scope, construct)
             const args: SpecificFunction.Argument[] = []
 
             for (const argument of func.args) {
@@ -83,14 +136,10 @@ export namespace Typing {
                 innerScope.register(name, new Argument(argument.span, type))
             }
 
-            let resultType = func.type ? parseExpressionNode(func.type, innerScope) : null
-            if (resultType != null && !(resultType instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", func.type!.span))
 
-            const body = func.body instanceof ExpressionNode ? parseExpressionNode(func.body, innerScope) : unreachable()
-            if (!(body instanceof Variable)) throw new ParsingError(new Diagnostic("Expected variable result", func.span))
-
-            if (resultType == null) resultType = body.type
-            if (!body.type.assignableTo(resultType)) throw new ParsingError(new Diagnostic(`Return value "${body.type.name}" is not assignable to "${resultType.name}"`, func.span))
+            const body = parseExpressionNode(func.body, innerScope)
+            if (!(body instanceof Variable)) throw new ParsingError(new Diagnostic("Expected value result", func.span))
+            if (resultType == null) resultType = construct.implicitReturnType ?? Void.TYPE
 
             scope.register(name, new FunctionDefinition(func.span, name).addOverload(new ProgramFunction(func.span, name, resultType, args, body)))
         }

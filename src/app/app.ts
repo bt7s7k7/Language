@@ -31,7 +31,9 @@ const ast = Parser.parse(new SourceFile("<anon>",
      return fibonacci(6)
  }
  ` */
-    `function foo(value: number): number => 5`
+    `function foo(value: number) {
+        return value
+    }`
 ))
 if (ast instanceof Diagnostic) {
     console.log(inspect(ast, undefined, Infinity, true))
