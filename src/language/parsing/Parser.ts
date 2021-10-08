@@ -1,12 +1,13 @@
-import exp = require("constants")
 import { unreachable } from "../../comTypes/util"
 import { BlockNode } from "../ast/nodes/BlockNode"
 import { ArgumentDeclarationNode } from "../ast/nodes/DeclarationNode"
 import { ExpressionNode } from "../ast/nodes/ExpressionNode"
 import { FunctionDefinitionNode } from "../ast/nodes/FunctionDefinitionNode"
 import { IdentifierNode } from "../ast/nodes/IdentifierNode"
+import { IfStatementNode } from "../ast/nodes/IfStatementNode"
 import { InvocationNode } from "../ast/nodes/InvocationNode"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
+import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
 import { TypeReferenceNode } from "../ast/nodes/TypeReferenceNode"
 import { Diagnostic } from "../Diagnostic"
@@ -15,6 +16,7 @@ import { Span } from "../Span"
 import { CharClass } from "./CharClass"
 import { SourceFile } from "./SourceFile"
 import { Token } from "./Token"
+import exp = require("constants")
 
 class ParsingFailure extends Error {
     public name = "ParsingFailure"
@@ -37,10 +39,13 @@ const OPERATORS: OperatorDefinition[] = [
     { name: "negate", text: "-", type: "prefix", presentence: 0 },
     { name: "mul", text: "*", type: "binary", presentence: 1 },
     { name: "add", text: "+", type: "binary", presentence: 2 },
-    { name: "assign", text: "=", type: "binary", presentence: 3 },
+    { name: "subtract", text: "-", type: "binary", presentence: 2 },
+    { name: "equals", text: "==", type: "binary", presentence: 3 },
+    { name: "or", text: "||", type: "binary", presentence: 4 },
+    { name: "assign", text: "=", type: "binary", presentence: 5 },
 ]
 
-const MAX_PRESENTENCE = 4
+const MAX_PRESENTENCE = 6
 
 export namespace Parser {
     export function parse(file: SourceFile) {
@@ -61,14 +66,14 @@ export namespace Parser {
             } else {
                 column++
             }
-            index++
             if (index >= content.length) {
                 throw new ParsingFailure("Unexpected EOF")
             }
+            index++
         }
 
         function willEOF() {
-            return index + 1 >= content.length
+            return index >= content.length
         }
 
         function skipWhitespace() {
@@ -109,7 +114,7 @@ export namespace Parser {
             if (!CharClass.isWord(content[index])) return null
             const pos = makePos()
             const start = index
-            while (CharClass.isWord(content[index])) next()
+            while (!willEOF() && CharClass.isWord(content[index])) next()
             const end = index
             const word = content.slice(start, end)
             return new Token(pos.span(end - start), word)
@@ -174,16 +179,40 @@ export namespace Parser {
         }
 
         function parseExpression() {
+            skipWhitespace()
             const ret = new ExpressionNode(makePos().span(1))
             let hasTarget = false
             top: for (; ;) {
                 skipWhitespace()
 
                 const start = makePos()
-                if (!hasTarget) {
+                if (!willEOF()) if (!hasTarget) {
+                    if (consume("if")) {
+                        skipWhitespace()
+                        const invert = consume("not") == true
+                        skipWhitespace()
+                        if (!consume("(")) throw new ParsingFailure(`Expected "("`)
+                        const predicate = parseExpression()
+                        if (!consume(")")) throw new ParsingFailure(`Expected ")"`)
+                        skipWhitespace()
+                        const body = consume("{") ? parseBlock("}") : parseExpression()
+                        skipWhitespace()
+                        const elseClause = consume("else") ? (skipWhitespace(), consume("{") ? parseBlock("}") : parseExpression()) : null
+                        ret.addChild(new IfStatementNode(start.span(2), predicate, invert, body, elseClause))
+                        continue
+                    }
+
+                    if (consume("return")) {
+                        skipWhitespace()
+                        const body = parseExpression()
+                        ret.addChild(new ReturnStatementNode(start.span(6), body))
+                        break
+                    }
+
                     for (const operator of OPERATORS) {
-                        if (consume(operator.text)) {
+                        if (matches(operator.text)) {
                             if (operator.type != "prefix") continue
+                            consume(operator.text)
                             ret.addChild(new OperatorNode(start.span(operator.text.length), operator.name)).meta = operator
                             continue top
                         }
@@ -206,8 +235,9 @@ export namespace Parser {
                     }
                 } else {
                     for (const operator of OPERATORS) {
-                        if (consume(operator.text)) {
+                        if (matches(operator.text)) {
                             if (operator.type == "prefix") continue
+                            consume(operator.text)
                             if (operator.type == "binary") hasTarget = false
                             ret.addChild(new OperatorNode(start.span(operator.text.length), operator.name)).meta = operator
                             continue top

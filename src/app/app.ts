@@ -18,8 +18,15 @@ Position.prototype._s = Position.prototype[inspect.custom] = function (this: Pos
 
 const result = Parser.parse(new SourceFile("<anon>",
     `
-function main(argc: int): int => 5 + 5
-`
+ function fibonacci(i: int) {
+     if (i == 0 || i == 1) return 0
+     return fibonacci(i - 1) + fibonacci(i - 2)
+ }
+ 
+ function main() {
+     return fibonacci(6)
+ }
+ `
 ))
 
 console.log(inspect(result, undefined, Infinity, true))
