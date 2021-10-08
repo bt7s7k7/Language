@@ -286,9 +286,17 @@ export namespace Parser {
             skipWhitespace()
             const args = consume("(") ? parseEnumerated(() => parseDeclaration(parseType, ArgumentDeclarationNode), ",", ")") : []
             skipWhitespace()
-            const body = consume("{") ? parseBlock("}") : null
+            const type = consume(":") ? (skipWhitespace(), parseType()) : null
+            skipWhitespace()
+            let body = consume("{") ? parseBlock("}") : null
+            if (!body) {
+                consume("=>")
+                body = parseExpression()
+            }
 
-            return new FunctionDefinitionNode(name?.span ?? start.span(1), name?.data ?? "[anonymous]", args, body)
+            if (!body) throw new ParsingFailure("Expected function body")
+
+            return new FunctionDefinitionNode(name?.span ?? start.span(1), name?.data ?? "[anonymous]", args, type, body)
         }
 
         try {
