@@ -6,6 +6,7 @@ import { FunctionDefinitionNode } from "../ast/nodes/FunctionDefinitionNode"
 import { IdentifierNode } from "../ast/nodes/IdentifierNode"
 import { IfStatementNode } from "../ast/nodes/IfStatementNode"
 import { InvocationNode } from "../ast/nodes/InvocationNode"
+import { NumberLiteral } from "../ast/nodes/NumberLiteral"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
@@ -216,6 +217,42 @@ export namespace Parser {
                             ret.addChild(new OperatorNode(start.span(operator.text.length), operator.name)).meta = operator
                             continue top
                         }
+                    }
+
+                    if (CharClass.isNumeric(content[index])) {
+                        const type =
+                            consume("0x") ? "hex" :
+                                consume("0b") ? "bin" :
+                                    "dec"
+
+                        let src = ""
+                        let isDecimal = false
+                        if (type == "dec") while (!willEOF() && CharClass.isNumeric(content[index])) { src += content[index]; next() }
+                        if (type == "hex") while (!willEOF() && CharClass.isHexDigit(content[index])) { src += content[index]; next() }
+                        if (type == "bin") while (!willEOF() && (content[index] == "1" || content[index] == "0")) { src += content[index]; next() }
+
+                        if (type == "dec") {
+                            if (consume(".")) {
+                                src += "."
+                                isDecimal = true
+                                while (!willEOF() && CharClass.isNumeric(content[index])) { src += content[index]; next() }
+                            }
+
+                            if (consume("e") || consume("E")) {
+                                src += "e"
+                                isDecimal = true
+                                if (consume("+")) src += "+"
+                                else if (consume("-")) src += "-"
+                                while (!willEOF() && CharClass.isNumeric(content[index])) { src += content[index]; next() }
+                            }
+                        }
+
+                        ret.addChild(new NumberLiteral(start.span(src.length),
+                            type == "dec" ? (isDecimal ? parseFloat(src) : parseInt(src))
+                                : parseInt(src, type == "hex" ? 16 : 2)
+                        ))
+                        hasTarget = true
+                        continue
                     }
 
                     {
