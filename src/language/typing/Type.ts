@@ -10,3 +10,7 @@ export abstract class Type {
         public readonly name: string
     ) { }
 }
+
+export namespace Type {
+    export const TYPE = new class TypeType extends Type { constructor() { super(Span.native, "Type") } }
+}

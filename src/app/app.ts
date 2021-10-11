@@ -6,6 +6,8 @@ import { SourceFile } from "../language/parsing/SourceFile"
 import { Position } from "../language/Position"
 import { Span } from "../language/Span"
 import { Double64 } from "../language/typing/Number"
+import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
+import { ProgramFunction } from "../language/typing/types/ProgramFunction"
 import { Typing } from "../language/typing/Typing"
 import { stringifySpan } from "../language/util"
 
@@ -31,9 +33,7 @@ const ast = Parser.parse(new SourceFile("<anon>",
      return fibonacci(6)
  }
  ` */
-    `function foo(value: number) {
-        return value
-    }`
+    `function f() => 2 + 3`
 ))
 if (ast instanceof Diagnostic) {
     console.log(inspect(ast, undefined, Infinity, true))
@@ -41,6 +41,10 @@ if (ast instanceof Diagnostic) {
     const globalScope = new Typing.Scope()
 
     globalScope.register("number", Double64.TYPE)
+    globalScope.register("__operator__add", new FunctionDefinition(Span.native, "__operator__add")
+        .addOverload(Double64.CONST_ADD)
+        .addOverload(new ProgramFunction(Span.native, "__operator__add", Double64.TYPE, [{ name: "a", type: Double64.TYPE }, { name: "b", type: Double64.TYPE }], new Double64.Constant(Span.native, 0)))
+    )
 
     const scope = Typing.parse(ast, globalScope)
 

@@ -6,17 +6,18 @@ import { ExpressionNode } from "../ast/nodes/ExpressionNode"
 import { FunctionDefinitionNode } from "../ast/nodes/FunctionDefinitionNode"
 import { IdentifierNode } from "../ast/nodes/IdentifierNode"
 import { NumberLiteral } from "../ast/nodes/NumberLiteral"
+import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
 import { Diagnostic } from "../Diagnostic"
 import { Span } from "../Span"
 import { Argument } from "./expressions/Argument"
 import { Block } from "./expressions/Block"
+import { Invocation } from "./expressions/Invocation"
 import { Return } from "./expressions/Return"
 import { VariableDereference } from "./expressions/VariableDereference"
 import { Double64 } from "./Number"
 import { Type } from "./Type"
-import { Void } from "./types/base"
 import { ConstExpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
@@ -92,6 +93,14 @@ export namespace Typing {
     export function parse(rootNode: RootNode, globalScope: Scope) {
         const rootScope = new Scope(globalScope)
 
+        function createInvocation(span: Span, handler: FunctionDefinition, operands: (Variable | Type)[]) {
+            const args = operands.map(v => v instanceof Variable ? v.type : new ConstExpr(v.span, Type.TYPE, v))
+            const overload = handler.findOverload(span, args, args.map(v => v.span))
+            if (overload instanceof Array) throw new ParsingError(new Diagnostic(`Cannot find overload for function "${handler.name}"`, span), ...overload)
+
+            return new Invocation(span, overload.target, operands.map(v => v instanceof Variable ? v : unreachable()), overload.result)
+        }
+
         function parseExpressionNode(node: ASTNode, scope: Scope): Variable | Type {
             if (node instanceof ExpressionNode) {
                 return parseExpressionNode(node.children[0], scope)
@@ -112,6 +121,12 @@ export namespace Typing {
                 return ret
             } else if (node instanceof BlockNode) {
                 return new Block(node.span, node.children.map(v => assetValue(parseExpressionNode(v, scope), v.span)))
+            } else if (node instanceof OperatorNode) {
+                const operator = node.name
+                const handler = globalScope.get("__operator__" + operator)
+                if (!(handler instanceof FunctionDefinition)) throw new ParsingError(new Diagnostic(`Cannot find operator "${operator}"`, node.span))
+                const operands = node.children.map(v => parseExpressionNode(v, scope))
+                return createInvocation(node.span, handler, operands)
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 
@@ -139,7 +154,7 @@ export namespace Typing {
 
             const body = parseExpressionNode(func.body, innerScope)
             if (!(body instanceof Variable)) throw new ParsingError(new Diagnostic("Expected value result", func.span))
-            if (resultType == null) resultType = construct.implicitReturnType ?? Void.TYPE
+            if (resultType == null) resultType = construct.implicitReturnType ?? body.type
 
             scope.register(name, new FunctionDefinition(func.span, name).addOverload(new ProgramFunction(func.span, name, resultType, args, body)))
         }
