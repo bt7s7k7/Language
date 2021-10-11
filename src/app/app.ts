@@ -33,7 +33,7 @@ const ast = Parser.parse(new SourceFile("<anon>",
      return fibonacci(6)
  }
  ` */
-    `function f() => 2 + 3`
+    `function f() => 2 + 3 + 6 + 7`
 ))
 if (ast instanceof Diagnostic) {
     console.log(inspect(ast, undefined, Infinity, true))

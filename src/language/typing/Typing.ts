@@ -93,12 +93,18 @@ export namespace Typing {
     export function parse(rootNode: RootNode, globalScope: Scope) {
         const rootScope = new Scope(globalScope)
 
+        function createConstant(constexpr: ConstExpr) {
+            if (constexpr.type == Double64.TYPE) return new Double64.Constant(constexpr.span, constexpr.value, constexpr)
+            else throw unreachable()
+        }
+
         function createInvocation(span: Span, handler: FunctionDefinition, operands: (Variable | Type)[]) {
             const args = operands.map(v => v instanceof Variable ? v.type : new ConstExpr(v.span, Type.TYPE, v))
             const overload = handler.findOverload(span, args, args.map(v => v.span))
             if (overload instanceof Array) throw new ParsingError(new Diagnostic(`Cannot find overload for function "${handler.name}"`, span), ...overload)
 
-            return new Invocation(span, overload.target, operands.map(v => v instanceof Variable ? v : unreachable()), overload.result)
+            return overload.result instanceof ConstExpr ? createConstant(overload.result)
+                : new Invocation(span, overload.target, operands.map(v => v instanceof Variable ? v : unreachable()), overload.result)
         }
 
         function parseExpressionNode(node: ASTNode, scope: Scope): Variable | Type {
