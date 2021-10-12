@@ -5,6 +5,7 @@ import { BlockNode } from "../ast/nodes/BlockNode"
 import { ExpressionNode } from "../ast/nodes/ExpressionNode"
 import { FunctionDefinitionNode } from "../ast/nodes/FunctionDefinitionNode"
 import { IdentifierNode } from "../ast/nodes/IdentifierNode"
+import { IfStatementNode } from "../ast/nodes/IfStatementNode"
 import { NumberLiteral } from "../ast/nodes/NumberLiteral"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
@@ -13,7 +14,9 @@ import { Diagnostic } from "../Diagnostic"
 import { Span } from "../Span"
 import { Argument } from "./expressions/Argument"
 import { Block } from "./expressions/Block"
+import { IfStatement } from "./expressions/IfStatement"
 import { Invocation } from "./expressions/Invocation"
+import { NOP } from "./expressions/NOP"
 import { Return } from "./expressions/Return"
 import { VariableDereference } from "./expressions/VariableDereference"
 import { Double64 } from "./Number"
@@ -70,6 +73,14 @@ function assetValue(target: Variable | Type, span: Span) {
     return target
 }
 
+function isConstexpr<T>(target: Type, type: Type) {
+    if (target instanceof ConstExpr && target.type.assignableTo(type)) {
+        return target.value as T
+    }
+
+    return null
+}
+
 export namespace Typing {
     export class Scope {
         public map = new Map<string, Variable | Type>()
@@ -107,7 +118,7 @@ export namespace Typing {
                 : new Invocation(span, overload.target, operands.map(v => v instanceof Variable ? v : unreachable()), overload.result)
         }
 
-        function parseExpressionNode(node: ASTNode, scope: Scope): Variable | Type {
+        function parseExpressionNode(node: ASTNode, scope: Scope, root = false): Variable | Type {
             if (node instanceof ExpressionNode) {
                 return parseExpressionNode(node.children[0], scope)
             } else if (node instanceof IdentifierNode) {
@@ -126,13 +137,33 @@ export namespace Typing {
                 construct.setReturnType(ret)
                 return ret
             } else if (node instanceof BlockNode) {
-                return new Block(node.span, node.children.map(v => assetValue(parseExpressionNode(v, scope), v.span)))
+                return new Block(node.span, node.children.map(v => assetValue(parseExpressionNode(v, scope, true), v.span)))
             } else if (node instanceof OperatorNode) {
                 const operator = node.name
                 const handler = globalScope.get("__operator__" + operator)
                 if (!(handler instanceof FunctionDefinition)) throw new ParsingError(new Diagnostic(`Cannot find operator "${operator}"`, node.span))
                 const operands = node.children.map(v => parseExpressionNode(v, scope))
                 return createInvocation(node.span, handler, operands)
+            } else if (node instanceof IfStatementNode) {
+                const predicate = assetValue(parseExpressionNode(node.predicate, scope), node.span)
+                const body = assetValue(parseExpressionNode(node.body, scope), node.span)
+                const bodyElse = node.bodyElse ? assetValue(parseExpressionNode(node.bodyElse, scope), node.span) : null
+                const returns = !root
+                if (returns) {
+                    if (bodyElse && !bodyElse.type.assignableTo(body.type)) throw new ParsingError(notAssignable(bodyElse.type, body.type, node.span))
+                }
+
+                const constPredicate = isConstexpr<number>(predicate.type, Double64.TYPE)
+                if (constPredicate != null) {
+                    if (constPredicate) {
+                        return body
+                    } else {
+                        if (bodyElse) return bodyElse
+                        else return new NOP(node.span)
+                    }
+                }
+
+                return new IfStatement(node.span, returns, predicate, body, bodyElse)
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 

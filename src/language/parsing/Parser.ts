@@ -200,6 +200,7 @@ export namespace Parser {
                         skipWhitespace()
                         const elseClause = consume("else") ? (skipWhitespace(), consume("{") ? parseBlock("}") : parseExpression()) : null
                         ret.addChild(new IfStatementNode(start.span(2), predicate, invert, body, elseClause))
+                        hasTarget = true
                         continue
                     }
 
