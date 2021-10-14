@@ -1,4 +1,3 @@
-import exp = require("constants")
 import { unreachable } from "../../comTypes/util"
 import { ASTNode } from "../ast/ASTNode"
 import { BlockNode } from "../ast/nodes/BlockNode"
@@ -10,23 +9,25 @@ import { NumberLiteral } from "../ast/nodes/NumberLiteral"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
+import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
 import { Diagnostic } from "../Diagnostic"
 import { Span } from "../Span"
-import { Argument } from "./expressions/Argument"
-import { Block } from "./expressions/Block"
-import { IfStatement } from "./expressions/IfStatement"
-import { Invocation } from "./expressions/Invocation"
-import { NOP } from "./expressions/NOP"
-import { Return } from "./expressions/Return"
-import { VariableDereference } from "./expressions/VariableDereference"
-import { Double64 } from "./Number"
+import { Double64 } from "./numbers"
+import { Program } from "./Program"
 import { Type } from "./Type"
 import { ConstExpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
 import { ProgramFunction } from "./types/ProgramFunction"
 import { SpecificFunction } from "./types/SpecificFunction"
-import { Variable } from "./Variable"
+import { Value } from "./Value"
+import { Block } from "./values/Block"
+import { IfStatement } from "./values/IfStatement"
+import { Invocation } from "./values/Invocation"
+import { NOP } from "./values/NOP"
+import { Return } from "./values/Return"
+import { Variable } from "./values/Variable"
+import { VariableDereference } from "./values/VariableDereference"
 
 class ParsingError extends Error {
     public name = "ParsingError"
@@ -68,8 +69,8 @@ class FunctionConstruct {
     ) { }
 }
 
-function assetValue(target: Variable | Type, span: Span) {
-    if (!(target instanceof Variable)) throw new ParsingError(new Diagnostic("Expected value", span))
+function assetValue(target: Value | Type, span: Span) {
+    if (!(target instanceof Value)) throw new ParsingError(new Diagnostic("Expected value", span))
     return target
 }
 
@@ -83,13 +84,13 @@ function isConstexpr<T>(target: Type, type: Type) {
 
 export namespace Typing {
     export class Scope {
-        public map = new Map<string, Variable | Type>()
+        public map = new Map<string, Value | Type>()
 
-        public get(name: string): Variable | Type | undefined {
+        public get(name: string): Value | Type | undefined {
             return this.map.get(name) ?? this.parent?.get(name)
         }
 
-        public register(name: string, value: Variable | Type) {
+        public register(name: string, value: Value | Type) {
             if (this.map.has(name)) throw new ParsingError(new Diagnostic("Duplicate declaration", value.span), new Diagnostic("Declared here", this.map.get(name)!.span))
             this.map.set(name, value)
             return true
@@ -109,16 +110,16 @@ export namespace Typing {
             else throw unreachable()
         }
 
-        function createInvocation(span: Span, handler: FunctionDefinition, operands: (Variable | Type)[]) {
-            const args = operands.map(v => v instanceof Variable ? v.type : new ConstExpr(v.span, Type.TYPE, v))
+        function createInvocation(span: Span, handler: FunctionDefinition, operands: (Value | Type)[]) {
+            const args = operands.map(v => v instanceof Value ? v.type : new ConstExpr(v.span, Type.TYPE, v))
             const overload = handler.findOverload(span, args, args.map(v => v.span))
             if (overload instanceof Array) throw new ParsingError(new Diagnostic(`Cannot find overload for function "${handler.name}"`, span), ...overload)
 
             return overload.result instanceof ConstExpr ? createConstant(overload.result)
-                : new Invocation(span, overload.target, operands.map(v => v instanceof Variable ? v : unreachable()), overload.result)
+                : new Invocation(span, overload, operands.map(v => v instanceof Value ? v : unreachable()))
         }
 
-        function parseExpressionNode(node: ASTNode, scope: Scope, root = false): Variable | Type {
+        function parseExpressionNode(node: ASTNode, scope: Scope, root = false): Value | Type {
             if (node instanceof ExpressionNode) {
                 return parseExpressionNode(node.children[0], scope)
             } else if (node instanceof IdentifierNode) {
@@ -132,7 +133,7 @@ export namespace Typing {
                 const construct = scope.construct
                 if (!(construct instanceof FunctionConstruct)) throw new ParsingError(new Diagnostic("Return can only be used in a function definition", node.span))
                 const body = parseExpressionNode(node.body, scope)
-                if (!(body instanceof Variable)) throw new ParsingError(new Diagnostic("Expected value", body.span))
+                if (!(body instanceof Value)) throw new ParsingError(new Diagnostic("Expected value", body.span))
                 const ret = new Return(node.span, body)
                 construct.setReturnType(ret)
                 return ret
@@ -164,6 +165,20 @@ export namespace Typing {
                 }
 
                 return new IfStatement(node.span, returns, predicate, body, bodyElse)
+            } else if (node instanceof VariableDeclarationNode) {
+                const name = node.name
+                const body = node.body ? assetValue(parseExpressionNode(node.body, scope), node.span) : null
+                const type = node.type ? parseExpressionNode(node.type, scope) : body?.type
+                if (!type) throw new ParsingError(new Diagnostic("Cannot get type of variable declaration", node.span))
+                if (!(type instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", node.type!.span))
+                if (body && !body.type.assignableTo(type)) throw new ParsingError(notAssignable(body.type, type, body.span))
+
+                const variable = new Variable(node.span, type)
+                scope.register(name, variable)
+                if (!body) return new NOP(node.span)
+
+                const handler = (scope.get("__operator__assign") ?? unreachable()) as FunctionDefinition
+                return createInvocation(node.span, handler, [new VariableDereference(node.span, variable), body])
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 
@@ -185,12 +200,12 @@ export namespace Typing {
                 if (!(type instanceof InstanceType)) throw new ParsingError(new Diagnostic("Expected type", typeExpr.span), new Diagnostic("Declared here", type.span))
 
                 args.push({ type, name })
-                innerScope.register(name, new Argument(argument.span, type))
+                innerScope.register(name, new Variable(argument.span, type))
             }
 
 
             const body = parseExpressionNode(func.body, innerScope)
-            if (!(body instanceof Variable)) throw new ParsingError(new Diagnostic("Expected value result", func.span))
+            if (!(body instanceof Value)) throw new ParsingError(new Diagnostic("Expected value result", func.span))
             if (resultType == null) resultType = construct.implicitReturnType ?? body.type
 
             scope.register(name, new FunctionDefinition(func.span, name).addOverload(new ProgramFunction(func.span, name, resultType, args, body)))
@@ -214,6 +229,6 @@ export namespace Typing {
             }
         }
 
-        return rootScope.map
+        return new Program(rootScope.map)
     }
 }

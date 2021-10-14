@@ -1,10 +1,10 @@
 import { Span } from "../../Span"
 import { Void } from "../types/base"
-import { Variable } from "../Variable"
+import { Value } from "../Value"
 
-export class Block extends Variable {
+export class Block extends Value {
     constructor(
         span: Span,
-        public readonly exprs: Variable[]
+        public readonly exprs: Value[]
     ) { super(span, Void.TYPE) }
 }

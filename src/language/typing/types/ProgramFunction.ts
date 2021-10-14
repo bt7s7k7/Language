@@ -1,6 +1,6 @@
 import { Span } from "../../Span"
 import { Type } from "../Type"
-import { Variable } from "../Variable"
+import { Value } from "../Value"
 import { SpecificFunction } from "./SpecificFunction"
 
 export class ProgramFunction extends SpecificFunction {
@@ -19,6 +19,6 @@ export class ProgramFunction extends SpecificFunction {
         span: Span, name: string,
         public readonly result: Type,
         public readonly args: SpecificFunction.Argument[],
-        public readonly body: Variable
+        public readonly body: Value
     ) { super(span, `${name}(${args.map(v => `${v.name}: ${v.type.name}`).join(", ")}): ${result.name}`) }
 }

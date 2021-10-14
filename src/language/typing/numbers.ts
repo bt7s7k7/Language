@@ -5,14 +5,14 @@ import { Type } from "./Type"
 import { ConstExpr } from "./types/ConstExpr"
 import { InstanceType } from "./types/InstanceType"
 import { SpecificFunction } from "./types/SpecificFunction"
-import { Variable } from "./Variable"
+import { Value } from "./Value"
 
 export namespace Double64 {
     export const TYPE = new class Double64 extends InstanceType {
         constructor() { super(Span.native, "number") }
     }
 
-    export class Constant extends Variable {
+    export class Constant extends Value {
         constructor(
             span: Span,
             public readonly value: number,

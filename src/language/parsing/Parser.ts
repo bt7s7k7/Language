@@ -10,6 +10,7 @@ import { NumberLiteral } from "../ast/nodes/NumberLiteral"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
+import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
 import { Diagnostic } from "../Diagnostic"
 import { Position } from "../Position"
 import { CharClass } from "./CharClass"
@@ -188,6 +189,27 @@ export namespace Parser {
 
                 const start = makePos()
                 if (!willEOF() && !matches("=>")) if (!hasTarget) {
+                    if (consume("var")) {
+                        skipWhitespace()
+                        const name = consumeWord()
+                        if (!name) throw new ParsingFailure("Expected variable name")
+                        skipWhitespace()
+                        let type: ExpressionNode | null = null
+                        if (consume(":")) {
+                            skipWhitespace()
+                            type = parseExpression()
+                            skipWhitespace()
+                        }
+                        let body: ExpressionNode | null = null
+                        if (consume("=")) {
+                            skipWhitespace()
+                            body = parseExpression()
+                        }
+                        ret.addChild(new VariableDeclarationNode(name.span, name.data, type, body))
+                        hasTarget = true
+                        continue
+                    }
+
                     if (consume("if")) {
                         skipWhitespace()
                         const invert = consume("not") == true

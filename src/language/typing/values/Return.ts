@@ -1,10 +1,10 @@
 import { Span } from "../../Span"
 import { Never } from "../types/base"
-import { Variable } from "../Variable"
+import { Value } from "../Value"
 
-export class Return extends Variable {
+export class Return extends Value {
     constructor(
         span: Span,
-        public readonly body: Variable
+        public readonly body: Value
     ) { super(span, Never.TYPE) }
 }

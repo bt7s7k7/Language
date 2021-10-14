@@ -5,7 +5,8 @@ import { Parser } from "../language/parsing/Parser"
 import { SourceFile } from "../language/parsing/SourceFile"
 import { Position } from "../language/Position"
 import { Span } from "../language/Span"
-import { Double64 } from "../language/typing/Number"
+import { GENERIC_ASSIGN } from "../language/typing/basic"
+import { Double64 } from "../language/typing/numbers"
 import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
 import { ProgramFunction } from "../language/typing/types/ProgramFunction"
 import { Typing } from "../language/typing/Typing"
@@ -33,8 +34,9 @@ const ast = Parser.parse(new SourceFile("<anon>",
      return fibonacci(6)
  }
  ` */
-    `function foo(predicate: number, a: number, b: number) {
-        return if (predicate) a else b
+    `function foo(a: number, b: number) {
+        var c = 5
+        return c
     }`
 ))
 if (ast instanceof Diagnostic) {
@@ -47,8 +49,13 @@ if (ast instanceof Diagnostic) {
         .addOverload(Double64.CONST_ADD)
         .addOverload(new ProgramFunction(Span.native, "__operator__add", Double64.TYPE, [{ name: "a", type: Double64.TYPE }, { name: "b", type: Double64.TYPE }], new Double64.Constant(Span.native, 0)))
     )
+    globalScope.register("__operator__assign", new FunctionDefinition(Span.native, "__operator__assign")
+        .addOverload(GENERIC_ASSIGN)
+    )
 
     const scope = Typing.parse(ast, globalScope)
-
+    if (scope instanceof Array) {
+        console.log(inspect(ast, undefined, Infinity, true))
+    }
     console.log(inspect(scope, undefined, Infinity, true))
 }
