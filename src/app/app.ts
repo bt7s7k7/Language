@@ -1,5 +1,6 @@
 import chalk = require("chalk")
 import { BytecodeVM } from "../language/vm/BytecodeVM"
+import { Instructions } from "../language/vm/Instructions"
 
 
 const vm = new BytecodeVM({
@@ -17,7 +18,7 @@ const vm = new BytecodeVM({
             returns: [
                 {
                     name: "ret",
-                    size: 8
+                    size: 4
                 }
             ],
             labels: [],
@@ -26,13 +27,13 @@ const vm = new BytecodeVM({
         }
     ]
 }, new Uint32Array([
-    0x00010008,
-    0x00000000,
-    0x00020008,
-    0x00000001,
-    0x00030000,
+    (Instructions.CONST << 16) | 1,
+    0xff,
+    (Instructions.STORE << 16) | 1,
+    1,
+    Instructions.RETURN << 16,
 ]).buffer)
 
-const result = vm.directCall(0, [new Float64Array([101010]).buffer], 8)
+const result = vm.directCall(0, [new Float64Array([101010]).buffer], 4)
 
-console.log(result.as(Float64Array))
+console.log(result.as(Uint32Array))

@@ -55,6 +55,12 @@ export class BytecodeVM {
                     this.makeReturn(entry)
                     if (this.controlStack.length == 0) return
                 } break
+                case Instructions.CONST: {
+                    const data = ctx.data[ctx.pc]
+                    ctx.pc++
+                    const buffer = new Uint32Array([data]).buffer.slice(0, subtype)
+                    this.stack.pushConst(buffer)
+                } break
                 default: {
                     throw new Error("Invalid instruction")
                 }
