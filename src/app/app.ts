@@ -1,61 +1,38 @@
 import chalk = require("chalk")
-import { inspect } from "util"
-import { Diagnostic } from "../language/Diagnostic"
-import { Parser } from "../language/parsing/Parser"
-import { SourceFile } from "../language/parsing/SourceFile"
-import { Position } from "../language/Position"
-import { Span } from "../language/Span"
-import { GENERIC_ASSIGN } from "../language/typing/basic"
-import { Double64 } from "../language/typing/numbers"
-import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
-import { ProgramFunction } from "../language/typing/types/ProgramFunction"
-import { Typing } from "../language/typing/Typing"
-import { stringifySpan } from "../language/util"
+import { BytecodeVM } from "../language/vm/BytecodeVM"
 
-// @ts-ignore
-Span.prototype[inspect.custom] = function (this: Span) {
-    if (this == Span.native) return chalk.blueBright("<native>")
-    return "\n" + chalk.blueBright(stringifySpan(this.pos.file, this.pos.line, this.pos.column, this.length))
-}
 
-// @ts-ignore
-Position.prototype._s = Position.prototype[inspect.custom] = function (this: Position) {
-    return "\n" + chalk.blueBright(stringifySpan(this.file, this.line, this.column, 1))
-}
+const vm = new BytecodeVM({
+    data: [],
+    functions: [
+        {
+            name: "main",
+            arguments: [
+                {
+                    name: "a",
+                    size: 8
+                }
+            ],
+            variables: [],
+            returns: [
+                {
+                    name: "ret",
+                    size: 8
+                }
+            ],
+            labels: [],
+            offset: 0,
+            size: 20
+        }
+    ]
+}, new Uint32Array([
+    0x00010008,
+    0x00000000,
+    0x00020008,
+    0x00000001,
+    0x00030000,
+]).buffer)
 
-const ast = Parser.parse(new SourceFile("<anon>",
-    /* `
- function fibonacci(i: int) {
-     if (i == 0 || i == 1) return 0
-     return fibonacci(i - 1) + fibonacci(i - 2)
- }
- 
- function main() {
-     return fibonacci(6)
- }
- ` */
-    `function foo(a: number, b: number) {
-        var c = 5
-        return c
-    }`
-))
-if (ast instanceof Diagnostic) {
-    console.log(inspect(ast, undefined, Infinity, true))
-} else {
-    const globalScope = new Typing.Scope()
+const result = vm.directCall(0, [new Float64Array([101010]).buffer], 8)
 
-    globalScope.register("number", Double64.TYPE)
-    globalScope.register("__operator__add", new FunctionDefinition(Span.native, "__operator__add")
-        .addOverload(Double64.CONST_ADD)
-        .addOverload(new ProgramFunction(Span.native, "__operator__add", Double64.TYPE, [{ name: "a", type: Double64.TYPE }, { name: "b", type: Double64.TYPE }], new Double64.Constant(Span.native, 0)))
-    )
-    globalScope.register("__operator__assign", new FunctionDefinition(Span.native, "__operator__assign")
-        .addOverload(GENERIC_ASSIGN)
-    )
-
-    const scope = Typing.parse(ast, globalScope)
-    if (scope instanceof Array) {
-        console.log(inspect(ast, undefined, Infinity, true))
-    }
-    console.log(inspect(scope, undefined, Infinity, true))
-}
+console.log(result.as(Float64Array))
