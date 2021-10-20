@@ -109,6 +109,13 @@ export class BytecodeVM {
 
         this.variableStack.expand(size)
 
+        for (let i = func.arguments.length - 1; i >= 0; i--) {
+            const arg = func.arguments[i]
+            const offset = references[i]
+            const data = this.stack.pop(arg.size)
+            this.variableStack.write(offset, data)
+        }
+
         const entry: ExecutionContext = {
             function: func,
             data: new Uint32Array(this.data.slice(func.offset, func.offset + func.size)),
@@ -118,17 +125,11 @@ export class BytecodeVM {
             stackLen: this.stack.length
         }
 
-        for (let i = func.arguments.length - 1; i >= 0; i--) {
-            const arg = func.arguments[i]
-            const offset = references[i]
-            const data = this.stack.pop(arg.size)
-            this.variableStack.write(offset, data)
-        }
-
         return entry
     }
 
     protected makeReturn(entry: ExecutionContext) {
+        if (this.stack.length != entry.stackLen) throw new Error("Stack length was not returned to the same value as when the function started")
         const referenceOffset = entry.function.arguments.length + entry.function.variables.length
         for (let i = 0; i < entry.function.returns.length; i++) {
             const offset = entry.references[referenceOffset + i]
