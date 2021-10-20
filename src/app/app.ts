@@ -52,11 +52,35 @@ const vm = new BytecodeVM({
                     offset: 25
                 }
             ],
-            offset: 0,
+            offset: 44,
             size: 104
+        },
+        {
+            name: "main",
+            arguments: [],
+            variables: [],
+            returns: [
+                {
+                    name: "ret",
+                    size: 8
+                }
+            ],
+            labels: [],
+            offset: 0,
+            size: 44
         }
     ]
 }, new Uint32Array([
+    (Instructions.CONST << 16) | 8,
+    ...new Uint32Array(new Float64Array([7]).buffer),
+    (Instructions.CONST << 16) | 8,
+    ...new Uint32Array(new Float64Array([4]).buffer),
+    Instructions.CALL << 16,
+    0,
+    (Instructions.STORE << 16) | 8,
+    0,
+    Instructions.RETURN << 16,
+
     (Instructions.LOAD << 16) | 8,
     0,
     (Instructions.STORE << 16) | 8,
@@ -89,6 +113,6 @@ const vm = new BytecodeVM({
     Instructions.RETURN << 16,
 ]).buffer)
 
-const result = vm.directCall(0, [new Float64Array([100, 150]).buffer], 8)
+const result = vm.directCall(1, [], 8)
 
 console.log(result.as(Float64Array))

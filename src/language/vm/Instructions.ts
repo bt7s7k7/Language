@@ -4,6 +4,7 @@ export namespace Instructions {
     export const RETURN = 3
     export const CONST = 4
     export const DROP = 5
+    export const CALL = 6
     export const ADD = 101
     export const BR_TRUE = 10
     export const BR_FALSE = 11

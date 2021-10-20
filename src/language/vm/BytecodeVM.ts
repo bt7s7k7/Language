@@ -65,6 +65,7 @@ export class BytecodeVM {
                     console.log("Return")
                     this.makeReturn(entry)
                     if (this.controlStack.length == 0) return
+                    ctx = this.controlStack[this.controlStack.length - 1]
                 } break
                 case Instructions.CONST: {
                     const data: number[] = []
@@ -108,6 +109,13 @@ export class BytecodeVM {
                 case Instructions.DROP: {
                     this.stack.pop(subtype)
                 } break
+                case Instructions.CALL: {
+                    const funcNumber = ctx.data[ctx.pc]
+                    ctx.pc++
+                    console.log("Call:", funcNumber)
+                    ctx = this.makeCall(funcNumber)
+                    this.controlStack.push(ctx)
+                } break
                 default: {
                     throw new Error("Invalid instruction")
                 }
@@ -119,6 +127,7 @@ export class BytecodeVM {
 
     protected makeCall(index: number) {
         const func = this.config.functions[index]
+        console.log("Called function", ["func.name"])
         if (!func) throw unreachable()
         let size = 0
         let offset = this.variableStack.length

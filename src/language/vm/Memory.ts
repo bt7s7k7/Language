@@ -1,4 +1,3 @@
-import { unreachable } from "../../comTypes/util"
 import { AnyTypedArray, AnyTypedArrayCtor } from "./types"
 
 export class Memory {
@@ -21,7 +20,7 @@ export class Memory {
 
     public shrink(size: number) {
         this.length -= size
-        if (this.length < 0) throw unreachable()
+        if (this.length < 0) throw new Error("Cannot pop, stack too short (" + this.length + ")")
     }
 
     public write(offset: number, data: MemoryView) {
