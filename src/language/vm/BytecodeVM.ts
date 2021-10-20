@@ -105,6 +105,9 @@ export class BytecodeVM {
                     console.log("Jump:", label.name)
                     ctx.pc = label.offset
                 } break
+                case Instructions.DROP: {
+                    this.stack.pop(subtype)
+                } break
                 default: {
                     throw new Error("Invalid instruction")
                 }
