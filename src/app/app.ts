@@ -26,33 +26,69 @@ const vm = new BytecodeVM({
                     size: 8
                 },
                 {
-                    name: "a",
+                    name: "b",
                     size: 8
                 }
             ],
-            variables: [],
+            variables: [
+                {
+                    name: "counter",
+                    size: 8,
+                }
+            ],
             returns: [
                 {
                     name: "ret",
                     size: 8
                 }
             ],
-            labels: [],
+            labels: [
+                {
+                    name: "loop_start",
+                    offset: 4
+                },
+                {
+                    name: "loop_end",
+                    offset: 25
+                }
+            ],
             offset: 0,
-            size: 32
+            size: 104
         }
     ]
 }, new Uint32Array([
     (Instructions.LOAD << 16) | 8,
     0,
+    (Instructions.STORE << 16) | 8,
+    2,
+
     (Instructions.LOAD << 16) | 8,
+    2,
+    (Instructions.BR_FALSE << 16) | Instructions.Types.FLOAT64,
     1,
+
+    (Instructions.LOAD << 16) | 8,
+    2,
+    (Instructions.CONST << 16) | 8,
+    ...new Uint32Array(new Float64Array([-1]).buffer),
     (Instructions.ADD << 16) | Instructions.Types.FLOAT64,
     (Instructions.STORE << 16) | 8,
     2,
+
+    (Instructions.LOAD << 16) | 8,
+    1,
+    (Instructions.LOAD << 16) | 8,
+    3,
+    (Instructions.ADD << 16) | Instructions.Types.FLOAT64,
+    (Instructions.STORE << 16) | 8,
+    3,
+
+    Instructions.BR << 16,
+    0,
+
     Instructions.RETURN << 16,
 ]).buffer)
 
-const result = vm.directCall(0, [new Float64Array([88, 11]).buffer], 8)
+const result = vm.directCall(0, [new Float64Array([100, 150]).buffer], 8)
 
 console.log(result.as(Float64Array))

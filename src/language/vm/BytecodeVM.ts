@@ -1,7 +1,7 @@
 import { unreachable } from "../../comTypes/util"
 import { ExecutableHeader } from "./ExecutableHeader"
 import { Instructions } from "./Instructions"
-import { Memory } from "./Memory"
+import { Memory, MemoryView } from "./Memory"
 import { AnyTypedArrayCtor } from "./types"
 
 interface ExecutionContext {
@@ -41,9 +41,9 @@ export class BytecodeVM {
             const curr = ctx.data[ctx.pc]
             const inst = (curr & 0xffff0000) >>> 16
             const subtype = curr & 0x0000ffff
+            console.log("PC:", ctx.pc)
             ctx.pc++
 
-            console.log("PC:", ctx.pc)
 
             switch (inst) {
                 case Instructions.LOAD: {
@@ -62,15 +62,18 @@ export class BytecodeVM {
                 } break
                 case Instructions.RETURN: {
                     const entry = this.controlStack.pop()!
-                    this.makeReturn(entry)
                     console.log("Return")
+                    this.makeReturn(entry)
                     if (this.controlStack.length == 0) return
                 } break
                 case Instructions.CONST: {
-                    const data = ctx.data[ctx.pc]
-                    ctx.pc++
-                    const buffer = new Uint32Array([data]).buffer.slice(0, subtype)
-                    console.log("Const:", buffer)
+                    const data: number[] = []
+                    for (let size = subtype; size > 0; size -= 4) {
+                        data.push(ctx.data[ctx.pc])
+                        ctx.pc++
+                    }
+                    const buffer = new Uint32Array(data).buffer.slice(0, subtype)
+                    console.log("Const:", new MemoryView(buffer))
                     this.stack.pushConst(buffer)
                 } break
                 case Instructions.ADD: {
@@ -81,6 +84,26 @@ export class BytecodeVM {
                     const res = a + b
                     console.log("Add:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
+                } break
+                case Instructions.BR_FALSE:
+                case Instructions.BR_TRUE: {
+                    const type = TYPES[subtype as keyof typeof TYPES]
+                    if (!type) throw new Error("Invalid type")
+                    const labelIndex = ctx.data[ctx.pc]
+                    ctx.pc++
+                    const predicate = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    if (!predicate == !(inst == Instructions.BR_TRUE)) {
+                        const label = ctx.function.labels[labelIndex]
+                        console.log("Jump:", label.name)
+                        ctx.pc = label.offset
+                    } else console.log("Jump skipped")
+                } break
+                case Instructions.BR: {
+                    const labelIndex = ctx.data[ctx.pc]
+                    ctx.pc++
+                    const label = ctx.function.labels[labelIndex]
+                    console.log("Jump:", label.name)
+                    ctx.pc = label.offset
                 } break
                 default: {
                     throw new Error("Invalid instruction")
@@ -129,7 +152,7 @@ export class BytecodeVM {
     }
 
     protected makeReturn(entry: ExecutionContext) {
-        if (this.stack.length != entry.stackLen) throw new Error("Stack length was not returned to the same value as when the function started")
+        if (this.stack.length != entry.stackLen) throw new Error("Stack length was not returned to the same value as when the function started (" + this.stack.length + "," + entry.stackLen + ")")
         const referenceOffset = entry.function.arguments.length + entry.function.variables.length
         for (let i = 0; i < entry.function.returns.length; i++) {
             const offset = entry.references[referenceOffset + i]

@@ -33,7 +33,7 @@ export class Memory {
     }
 
     public read(offset: number, size: number) {
-        return new MemoryView(this, offset, size)
+        return new MemoryView(this.buffer, offset, size)
     }
 
     public pop(size: number) {
@@ -65,18 +65,18 @@ export class MemoryView {
 
     public getUint8Array() {
         if (this.array) return this.array
-        else return this.array = new Uint8Array(this.memory.buffer, this.offset, this.length)
+        else return this.array = new Uint8Array(this.buffer, this.offset, this.length)
     }
 
     public as<T extends AnyTypedArray>(type: AnyTypedArrayCtor<T>) {
-        return new type(this.memory.buffer, this.offset, this.length / type.BYTES_PER_ELEMENT)
+        return new type(this.buffer, this.offset, this.length / type.BYTES_PER_ELEMENT)
     }
 
     protected array: Uint8Array | null = null
 
     constructor(
-        public readonly memory: Memory,
-        public readonly offset: number,
-        public readonly length: number
+        public readonly buffer: ArrayBuffer,
+        public readonly offset: number = 0,
+        public readonly length: number = buffer.byteLength
     ) { }
 }
