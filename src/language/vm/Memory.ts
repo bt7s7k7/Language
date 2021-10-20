@@ -1,4 +1,5 @@
 import { unreachable } from "../../comTypes/util"
+import { AnyTypedArray, AnyTypedArrayCtor } from "./types"
 
 export class Memory {
     public buffer = new ArrayBuffer(1024)
@@ -67,7 +68,7 @@ export class MemoryView {
         else return this.array = new Uint8Array(this.memory.buffer, this.offset, this.length)
     }
 
-    public as<T>(type: (new (buffer: ArrayBuffer, offset: number, length: number) => T) & { BYTES_PER_ELEMENT: number }) {
+    public as<T extends AnyTypedArray>(type: AnyTypedArrayCtor<T>) {
         return new type(this.memory.buffer, this.offset, this.length / type.BYTES_PER_ELEMENT)
     }
 

@@ -1,0 +1,2 @@
+export type AnyTypedArray = { [index: number]: number, length: number, buffer: ArrayBuffer }
+export type AnyTypedArrayCtor<T extends AnyTypedArray = AnyTypedArray> = ((new (buffer: ArrayBuffer, offset: number, length: number) => T) & (new (elements: number[]) => T)) & { BYTES_PER_ELEMENT: number }

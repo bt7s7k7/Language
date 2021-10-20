@@ -2,6 +2,7 @@ import { unreachable } from "../../comTypes/util"
 import { ExecutableHeader } from "./ExecutableHeader"
 import { Instructions } from "./Instructions"
 import { Memory } from "./Memory"
+import { AnyTypedArrayCtor } from "./types"
 
 interface ExecutionContext {
     function: ExecutableHeader.Function
@@ -10,6 +11,11 @@ interface ExecutionContext {
     pc: number
     size: number
     stackLen: number
+}
+
+const TYPES: Record<(typeof Instructions.Types)[keyof typeof Instructions.Types], AnyTypedArrayCtor> = {
+    [Instructions.Types.FLOAT64]: Float64Array,
+    [Instructions.Types.UINT32]: Uint32Array
 }
 
 export class BytecodeVM {
@@ -37,11 +43,14 @@ export class BytecodeVM {
             const subtype = curr & 0x0000ffff
             ctx.pc++
 
+            console.log("PC:", ctx.pc)
+
             switch (inst) {
                 case Instructions.LOAD: {
                     const ref = ctx.data[ctx.pc]
                     ctx.pc++
                     const data = this.variableStack.read(ctx.references[ref], subtype)
+                    console.log("Load:", ref, ctx.references[ref], data)
                     this.stack.push(data)
                 } break
                 case Instructions.STORE: {
@@ -49,17 +58,29 @@ export class BytecodeVM {
                     ctx.pc++
                     const data = this.stack.pop(subtype)
                     this.variableStack.write(ctx.references[ref], data)
+                    console.log("Store:", ref, ctx.references[ref], data)
                 } break
                 case Instructions.RETURN: {
                     const entry = this.controlStack.pop()!
                     this.makeReturn(entry)
+                    console.log("Return")
                     if (this.controlStack.length == 0) return
                 } break
                 case Instructions.CONST: {
                     const data = ctx.data[ctx.pc]
                     ctx.pc++
                     const buffer = new Uint32Array([data]).buffer.slice(0, subtype)
+                    console.log("Const:", buffer)
                     this.stack.pushConst(buffer)
+                } break
+                case Instructions.ADD: {
+                    const type = TYPES[subtype as keyof typeof TYPES]
+                    if (!type) throw new Error("Invalid type")
+                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const res = a + b
+                    console.log("Add:", a, b, res)
+                    this.stack.pushConst(new type([res]).buffer)
                 } break
                 default: {
                     throw new Error("Invalid instruction")
