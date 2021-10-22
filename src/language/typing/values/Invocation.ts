@@ -1,5 +1,6 @@
 import { FunctionIRBuilder } from "../../emission/InstructionPrinter"
 import { Span } from "../../Span"
+import { Instructions } from "../../vm/Instructions"
 import { IntrinsicFunction } from "../intrinsic/IntrinsicFunction"
 import { ProgramFunction } from "../types/ProgramFunction"
 import { SpecificFunction } from "../types/SpecificFunction"
@@ -11,7 +12,13 @@ export class Invocation extends Value {
         if (this.signature.target instanceof IntrinsicFunction) {
             return this.signature.target.emit(builder, this)
         } else if (this.signature.target instanceof ProgramFunction) {
-            // TODO: Call program function
+            for (const arg of this.args) {
+                arg.emit(builder)
+            }
+
+            builder.pushInstruction(Instructions.CALL, 0, ["f:" + this.signature.target.name])
+
+            return this.signature.result.size
         }
 
         throw new Error("Unsupported specific function type: " + this.signature.target.constructor.name)

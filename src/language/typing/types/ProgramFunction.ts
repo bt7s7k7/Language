@@ -17,9 +17,9 @@ export class ProgramFunction extends SpecificFunction {
 
     constructor(
         span: Span, name: string,
-        public readonly result: Type,
+        public result: Type,
         public readonly args: ProgramFunction.Argument[],
-        public readonly body: Value
+        public body: Value
     ) { super(span, `${name}(${args.map(v => `${v.name}: ${v.type.name}`).join(", ")}): ${result.name}`) }
 }
 

@@ -127,7 +127,7 @@ export class BytecodeVM {
 
     protected makeCall(index: number) {
         const func = this.config.functions[index]
-        console.log("Called function", ["func.name"])
+        console.log("Called function", [func.name])
         if (!func) throw unreachable()
         let size = 0
         let offset = this.variableStack.length

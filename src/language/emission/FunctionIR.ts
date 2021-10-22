@@ -64,6 +64,9 @@ export class FunctionIR {
                         if (!label) throw new Error("Cannot find label name")
                         const index = header.labels.indexOf(label)
                         instructions.push(index)
+                    } else if (arg.startsWith("f:")) {
+                        const index = functionLookup.get(arg.substr(2)) ?? unreachable()
+                        instructions.push(index)
                     } else {
                         const index = variableIndexes.get(this.variables.get(arg)!) ?? unreachable()
                         instructions.push(index)

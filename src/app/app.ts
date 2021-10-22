@@ -48,9 +48,19 @@ const ast = Parser.parse(new SourceFile("<anon>",
      return fibonacci(6)
  }
  ` */
-    `function foo(a: number, b: number, c: number) {
-        return if (c) a else b
-    }`
+    `
+    function _mul(value: number, target: number, counter: number, offset: number): number {
+        if (counter) {
+            return _mul(value + target, target, counter + offset, offset)
+        } else {
+            return value
+        }
+    }
+    
+    function mul(a: number, b: number, offset: number, zero: number) {
+        return _mul(zero, a, b, offset)
+    }
+    `
 ))
 if (ast instanceof Diagnostic) {
     console.log(inspect(ast, undefined, Infinity, true))
@@ -74,14 +84,14 @@ if (ast instanceof Diagnostic) {
         console.log(inspect(emission, undefined, Infinity, true))
         const assembler = new Assembler()
         for (const symbol of emission.values()) {
-            assembler.addFunction(symbol.assemble())
+            assembler.addFunction(symbol)
         }
 
         const build = assembler.build()
         console.log(inspect(build, undefined, Infinity, true))
 
         const vm = new BytecodeVM(build.header, build.data)
-        const result = vm.directCall(0, [new Float64Array([5, 20, 1]).buffer], 8)
+        const result = vm.directCall(1, [new Float64Array([5, 25, -1, 0]).buffer], 8)
         console.log(result)
     }
 }

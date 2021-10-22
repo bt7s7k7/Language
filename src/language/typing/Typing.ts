@@ -5,6 +5,7 @@ import { ExpressionNode } from "../ast/nodes/ExpressionNode"
 import { FunctionDefinitionNode } from "../ast/nodes/FunctionDefinitionNode"
 import { IdentifierNode } from "../ast/nodes/IdentifierNode"
 import { IfStatementNode } from "../ast/nodes/IfStatementNode"
+import { InvocationNode } from "../ast/nodes/InvocationNode"
 import { NumberLiteral } from "../ast/nodes/NumberLiteral"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
@@ -15,6 +16,7 @@ import { Span } from "../Span"
 import { Double64 } from "./numbers"
 import { Program } from "./Program"
 import { Type } from "./Type"
+import { Never } from "./types/base"
 import { ConstExpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
@@ -179,6 +181,11 @@ export namespace Typing {
 
                 const handler = (scope.get("__operator__assign") ?? unreachable()) as FunctionDefinition
                 return createInvocation(node.span, handler, [new VariableDereference(node.span, variable), body])
+            } else if (node instanceof InvocationNode) {
+                const handler = parseExpressionNode(node.target, scope)
+                if (!(handler instanceof FunctionDefinition)) throw new ParsingError(new Diagnostic(`Target is not callable`, node.span))
+                const operands = node.args.map(v => parseExpressionNode(v, scope))
+                return createInvocation(node.span, handler, operands)
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 
@@ -186,6 +193,7 @@ export namespace Typing {
             const name = func.name
             let resultType = func.type ? parseExpressionNode(func.type, scope) : null
             if (resultType != null && !(resultType instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", func.type!.span))
+
             const construct = new FunctionConstruct(resultType)
             const innerScope = new Scope(scope, construct)
             const args: ProgramFunction.Argument[] = []
@@ -203,19 +211,45 @@ export namespace Typing {
                 innerScope.register(name, new Variable(argument.span, type, name))
             }
 
+            const self = new ProgramFunction(func.span, name, resultType ?? Never.TYPE, args, null!)
+            const definition = new FunctionDefinition(func.span, name)
+            definition.addOverload(self)
+
+            innerScope.register(name, definition)
 
             const body = parseExpressionNode(func.body, innerScope)
             if (!(body instanceof Value)) throw new ParsingError(new Diagnostic("Expected value result", func.span))
-            if (resultType == null) resultType = construct.implicitReturnType ?? body.type
+            if (resultType == null) self.result = construct.implicitReturnType ?? body.type
+            self.body = body
 
-            scope.register(name, new FunctionDefinition(func.span, name).addOverload(new ProgramFunction(func.span, name, resultType, args, body)))
+            scope.register(name, definition)
         }
 
         function parseRoot(root: RootNode, scope: Scope) {
-            for (const node of root.children) {
-                if (node instanceof FunctionDefinitionNode) {
-                    parseFunctionDefinition(node, scope)
-                } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
+            let pending: ASTNode[] = root.children
+            let next: ASTNode[] = []
+
+            while (pending.length > 0) {
+                let errors: Diagnostic[] = []
+                for (const node of pending) {
+                    if (node instanceof FunctionDefinitionNode) {
+                        try {
+                            parseFunctionDefinition(node, scope)
+                        } catch (err) {
+                            if (err instanceof ParsingError) {
+                                errors.push(...err.diagnostics)
+                                next.push(node)
+                            } else throw err
+                        }
+                    } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
+                }
+
+                if (next.length == pending.length) {
+                    throw new ParsingError(...errors)
+                }
+
+                pending = next
+                next = []
             }
         }
 
