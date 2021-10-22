@@ -32,7 +32,7 @@ abstract class Operation extends IntrinsicFunction {
 }
 
 export namespace IntrinsicMaths {
-    export class Addition extends Operation {
+    class BinaryOperation extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
             const type = invocation.type
             const subtype = EmissionUtil.getTypeCode(type)
@@ -40,13 +40,22 @@ export namespace IntrinsicMaths {
             EmissionUtil.safeEmit(builder, type.size, invocation.args[0])
             EmissionUtil.safeEmit(builder, type.size, invocation.args[1])
 
-            builder.pushInstruction(Instructions.ADD, subtype)
+            builder.pushInstruction(this.instruction, subtype)
 
             return type.size
         }
 
-        constructor() { super("__operator_add", 2) }
+        constructor(
+            name: string,
+            public readonly instruction: number
+        ) { super(name, 2) }
     }
+
+    export const ADD = new BinaryOperation("__operator_add", Instructions.ADD)
+    export const SUB = new BinaryOperation("__operator_sub", Instructions.SUB)
+    export const MUL = new BinaryOperation("__operator_mul", Instructions.MUL)
+    export const DIV = new BinaryOperation("__operator_div", Instructions.DIV)
+    export const MOD = new BinaryOperation("__operator_mod", Instructions.MOD)
 
     export class Assignment extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {

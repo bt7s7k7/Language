@@ -6,6 +6,10 @@ export namespace Instructions {
     export const DROP = 5
     export const CALL = 6
     export const ADD = 101
+    export const SUB = 102
+    export const MUL = 103
+    export const DIV = 104
+    export const MOD = 105
     export const BR_TRUE = 10
     export const BR_FALSE = 11
     export const BR = 12

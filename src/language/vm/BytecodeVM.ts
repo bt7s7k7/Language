@@ -80,10 +80,46 @@ export class BytecodeVM {
                 case Instructions.ADD: {
                     const type = TYPES[subtype as keyof typeof TYPES]
                     if (!type) throw new Error("Invalid type")
-                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = a + b
                     console.log("Add:", a, b, res)
+                    this.stack.pushConst(new type([res]).buffer)
+                } break
+                case Instructions.SUB: {
+                    const type = TYPES[subtype as keyof typeof TYPES]
+                    if (!type) throw new Error("Invalid type")
+                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const res = a - b
+                    console.log("Sub:", a, b, res)
+                    this.stack.pushConst(new type([res]).buffer)
+                } break
+                case Instructions.MUL: {
+                    const type = TYPES[subtype as keyof typeof TYPES]
+                    if (!type) throw new Error("Invalid type")
+                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const res = a * b
+                    console.log("Mul:", a, b, res)
+                    this.stack.pushConst(new type([res]).buffer)
+                } break
+                case Instructions.DIV: {
+                    const type = TYPES[subtype as keyof typeof TYPES]
+                    if (!type) throw new Error("Invalid type")
+                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const res = a / b
+                    console.log("Div:", a, b, res)
+                    this.stack.pushConst(new type([res]).buffer)
+                } break
+                case Instructions.MOD: {
+                    const type = TYPES[subtype as keyof typeof TYPES]
+                    if (!type) throw new Error("Invalid type")
+                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const res = a % b
+                    console.log("Mod:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.BR_FALSE:

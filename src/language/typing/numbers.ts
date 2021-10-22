@@ -27,12 +27,12 @@ export namespace Double64 {
         ) { super(span, type) }
     }
 
-    export const CONST_ADD = new class extends SpecificFunction {
+    class ConstBinaryOperation extends SpecificFunction {
         public match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
             const types = SpecificFunction.testConstExpr<[number, number]>(span, [Double64.TYPE, Double64.TYPE], args, argSpans)
             if (types instanceof Diagnostic) return types
 
-            const result = types[0] + types[1]
+            const result = this.operation(types[0], types[1])
 
             return {
                 target: this,
@@ -41,9 +41,17 @@ export namespace Double64 {
             }
         }
 
-        constructor() { super(Span.native, "__operator__add") }
-
+        constructor(
+            name: string,
+            public readonly operation: (a: number, b: number) => number
+        ) { super(Span.native, name) }
     }
+
+    export const CONST_ADD = new ConstBinaryOperation("__operator_add", (a, b) => a + b)
+    export const CONST_SUB = new ConstBinaryOperation("__operator_sub", (a, b) => a - b)
+    export const CONST_MUL = new ConstBinaryOperation("__operator_mul", (a, b) => a * b)
+    export const CONST_DIV = new ConstBinaryOperation("__operator_div", (a, b) => a / b)
+    export const CONST_MOD = new ConstBinaryOperation("__operator_mod", (a, b) => a % b)
 
     export const CONST_NEGATE = new class extends SpecificFunction {
         public match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {

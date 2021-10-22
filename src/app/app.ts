@@ -49,15 +49,7 @@ const ast = Parser.parse(new SourceFile("<anon>",
  ` */
     `
     function mul(a: number, b: number) {
-        var counter = a
-        var value = 0
-        
-        while (counter) {
-            value = value + b
-            counter = counter + -1
-        }
-
-        return value
+        return a % b
     }
     `
 ))
@@ -66,10 +58,28 @@ if (ast instanceof Diagnostic) {
 } else {
     const globalScope = new Typing.Scope()
     globalScope.register("number", Double64.TYPE)
+
     globalScope.register("__operator__add", new FunctionDefinition(Span.native, "__operator__add")
         .addOverload(Double64.CONST_ADD)
-        .addOverload(new IntrinsicMaths.Addition())
+        .addOverload(IntrinsicMaths.ADD)
     )
+    globalScope.register("__operator__sub", new FunctionDefinition(Span.native, "__operator__sub")
+        .addOverload(Double64.CONST_SUB)
+        .addOverload(IntrinsicMaths.SUB)
+    )
+    globalScope.register("__operator__mul", new FunctionDefinition(Span.native, "__operator__mul")
+        .addOverload(Double64.CONST_MUL)
+        .addOverload(IntrinsicMaths.MUL)
+    )
+    globalScope.register("__operator__div", new FunctionDefinition(Span.native, "__operator__div")
+        .addOverload(Double64.CONST_DIV)
+        .addOverload(IntrinsicMaths.DIV)
+    )
+    globalScope.register("__operator__mod", new FunctionDefinition(Span.native, "__operator__mod")
+        .addOverload(Double64.CONST_MOD)
+        .addOverload(IntrinsicMaths.MOD)
+    )
+
     globalScope.register("__operator__assign", new FunctionDefinition(Span.native, "__operator__assign")
         .addOverload(new IntrinsicMaths.Assignment())
     )
