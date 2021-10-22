@@ -49,8 +49,15 @@ const ast = Parser.parse(new SourceFile("<anon>",
  ` */
     `
     function mul(a: number, b: number) {
-        var counter = 10
-        return counter
+        var counter = a
+        var value = 0
+        
+        while (counter) {
+            value = value + b
+            counter = counter + -1
+        }
+
+        return value
     }
     `
 ))

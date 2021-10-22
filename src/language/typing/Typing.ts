@@ -11,6 +11,7 @@ import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
 import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
+import { WhileNode } from "../ast/nodes/WhileNode"
 import { Diagnostic } from "../Diagnostic"
 import { Span } from "../Span"
 import { Double64 } from "./numbers"
@@ -29,6 +30,7 @@ import { NOP } from "./values/NOP"
 import { Return } from "./values/Return"
 import { Variable } from "./values/Variable"
 import { VariableDereference } from "./values/VariableDereference"
+import { WhileStatement } from "./values/WhileStatement"
 
 class ParsingError extends Error {
     public name = "ParsingError"
@@ -167,6 +169,11 @@ export namespace Typing {
                 }
 
                 return new IfStatement(node.span, returns, predicate, body, bodyElse)
+            } else if (node instanceof WhileNode) {
+                const predicate = assetValue(parseExpressionNode(node.predicate, scope), node.span)
+                const body = assetValue(parseExpressionNode(node.body, scope), node.span)
+
+                return new WhileStatement(node.span, predicate, body)
             } else if (node instanceof VariableDeclarationNode) {
                 const name = node.name
                 const body = node.body ? assetValue(parseExpressionNode(node.body, scope), node.span) : null

@@ -11,6 +11,7 @@ import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
 import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
+import { WhileNode } from "../ast/nodes/WhileNode"
 import { Diagnostic } from "../Diagnostic"
 import { Position } from "../Position"
 import { CharClass } from "./CharClass"
@@ -222,6 +223,18 @@ export namespace Parser {
                         skipWhitespace()
                         const elseClause = consume("else") ? (skipWhitespace(), consume("{") ? parseBlock("}") : parseExpression()) : null
                         ret.addChild(new IfStatementNode(start.span(2), predicate, invert, body, elseClause))
+                        hasTarget = true
+                        continue
+                    }
+
+                    if (consume("while")) {
+                        skipWhitespace()
+                        if (!consume("(")) throw new ParsingFailure(`Expected "("`)
+                        const predicate = parseExpression()
+                        if (!consume(")")) throw new ParsingFailure(`Expected ")"`)
+                        skipWhitespace()
+                        const body = consume("{") ? parseBlock("}") : parseExpression()
+                        ret.addChild(new WhileNode(start.span(5), predicate, body))
                         hasTarget = true
                         continue
                     }
