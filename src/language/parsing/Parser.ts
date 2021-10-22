@@ -43,7 +43,11 @@ const OPERATORS: OperatorDefinition[] = [
     { name: "mod", text: "%", type: "binary", presentence: 1 },
     { name: "add", text: "+", type: "binary", presentence: 2 },
     { name: "sub", text: "-", type: "binary", presentence: 2 },
-    { name: "equals", text: "==", type: "binary", presentence: 3 },
+    { name: "eq", text: "==", type: "binary", presentence: 3 },
+    { name: "gt", text: ">", type: "binary", presentence: 3 },
+    { name: "lt", text: "<", type: "binary", presentence: 3 },
+    { name: "gte", text: ">=", type: "binary", presentence: 3 },
+    { name: "lte", text: "<=", type: "binary", presentence: 3 },
     { name: "or", text: "||", type: "binary", presentence: 4 },
     { name: "assign", text: "=", type: "binary", presentence: 5 },
 ]

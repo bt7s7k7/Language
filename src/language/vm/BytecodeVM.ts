@@ -122,6 +122,51 @@ export class BytecodeVM {
                     console.log("Mod:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
                 } break
+                case Instructions.EQ: {
+                    const type = TYPES[subtype as keyof typeof TYPES]
+                    if (!type) throw new Error("Invalid type")
+                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const res = +(a == b)
+                    console.log("Eq:", a, b, res)
+                    this.stack.pushConst(new type([res]).buffer)
+                } break
+                case Instructions.LT: {
+                    const type = TYPES[subtype as keyof typeof TYPES]
+                    if (!type) throw new Error("Invalid type")
+                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const res = +(a < b)
+                    console.log("Lt:", a, b, res)
+                    this.stack.pushConst(new type([res]).buffer)
+                } break
+                case Instructions.GT: {
+                    const type = TYPES[subtype as keyof typeof TYPES]
+                    if (!type) throw new Error("Invalid type")
+                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const res = +(a > b)
+                    console.log("Gt:", a, b, res)
+                    this.stack.pushConst(new type([res]).buffer)
+                } break
+                case Instructions.LTE: {
+                    const type = TYPES[subtype as keyof typeof TYPES]
+                    if (!type) throw new Error("Invalid type")
+                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const res = +(a <= b)
+                    console.log("Lte:", a, b, res)
+                    this.stack.pushConst(new type([res]).buffer)
+                } break
+                case Instructions.GTE: {
+                    const type = TYPES[subtype as keyof typeof TYPES]
+                    if (!type) throw new Error("Invalid type")
+                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const res = +(a >= b)
+                    console.log("Gte:", a, b, res)
+                    this.stack.pushConst(new type([res]).buffer)
+                } break
                 case Instructions.BR_FALSE:
                 case Instructions.BR_TRUE: {
                     const type = TYPES[subtype as keyof typeof TYPES]

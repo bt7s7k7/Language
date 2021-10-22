@@ -56,6 +56,11 @@ export namespace IntrinsicMaths {
     export const MUL = new BinaryOperation("__operator_mul", Instructions.MUL)
     export const DIV = new BinaryOperation("__operator_div", Instructions.DIV)
     export const MOD = new BinaryOperation("__operator_mod", Instructions.MOD)
+    export const EQ = new BinaryOperation("__operator_eq", Instructions.EQ)
+    export const LT = new BinaryOperation("__operator_lt", Instructions.LT)
+    export const GT = new BinaryOperation("__operator_gt", Instructions.GT)
+    export const LTE = new BinaryOperation("__operator_lt", Instructions.LTE)
+    export const GTE = new BinaryOperation("__operator_gt", Instructions.GTE)
 
     export class Assignment extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {

@@ -10,6 +10,11 @@ export namespace Instructions {
     export const MUL = 103
     export const DIV = 104
     export const MOD = 105
+    export const EQ = 151
+    export const LT = 152
+    export const GT = 153
+    export const LTE = 152
+    export const GTE = 153
     export const BR_TRUE = 10
     export const BR_FALSE = 11
     export const BR = 12

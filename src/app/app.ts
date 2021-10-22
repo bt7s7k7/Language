@@ -49,7 +49,7 @@ const ast = Parser.parse(new SourceFile("<anon>",
  ` */
     `
     function mul(a: number, b: number) {
-        return a % b
+        return a < b
     }
     `
 ))
@@ -78,6 +78,26 @@ if (ast instanceof Diagnostic) {
     globalScope.register("__operator__mod", new FunctionDefinition(Span.native, "__operator__mod")
         .addOverload(Double64.CONST_MOD)
         .addOverload(IntrinsicMaths.MOD)
+    )
+    globalScope.register("__operator__eq", new FunctionDefinition(Span.native, "__operator__eq")
+        .addOverload(Double64.CONST_EQ)
+        .addOverload(IntrinsicMaths.EQ)
+    )
+    globalScope.register("__operator__lt", new FunctionDefinition(Span.native, "__operator__lt")
+        .addOverload(Double64.CONST_LT)
+        .addOverload(IntrinsicMaths.LT)
+    )
+    globalScope.register("__operator__gt", new FunctionDefinition(Span.native, "__operator__gt")
+        .addOverload(Double64.CONST_GT)
+        .addOverload(IntrinsicMaths.GT)
+    )
+    globalScope.register("__operator__lte", new FunctionDefinition(Span.native, "__operator__lte")
+        .addOverload(Double64.CONST_LTE)
+        .addOverload(IntrinsicMaths.LTE)
+    )
+    globalScope.register("__operator__gte", new FunctionDefinition(Span.native, "__operator__gte")
+        .addOverload(Double64.CONST_GTE)
+        .addOverload(IntrinsicMaths.GTE)
     )
 
     globalScope.register("__operator__assign", new FunctionDefinition(Span.native, "__operator__assign")

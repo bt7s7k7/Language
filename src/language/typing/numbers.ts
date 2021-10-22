@@ -52,6 +52,11 @@ export namespace Double64 {
     export const CONST_MUL = new ConstBinaryOperation("__operator_mul", (a, b) => a * b)
     export const CONST_DIV = new ConstBinaryOperation("__operator_div", (a, b) => a / b)
     export const CONST_MOD = new ConstBinaryOperation("__operator_mod", (a, b) => a % b)
+    export const CONST_EQ = new ConstBinaryOperation("__operator_eq", (a, b) => +(a == b))
+    export const CONST_LT = new ConstBinaryOperation("__operator_lt", (a, b) => +(a < b))
+    export const CONST_GT = new ConstBinaryOperation("__operator_gt", (a, b) => +(a > b))
+    export const CONST_LTE = new ConstBinaryOperation("__operator_lte", (a, b) => +(a <= b))
+    export const CONST_GTE = new ConstBinaryOperation("__operator_gte", (a, b) => +(a >= b))
 
     export const CONST_NEGATE = new class extends SpecificFunction {
         public match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
