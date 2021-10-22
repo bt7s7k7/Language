@@ -1,5 +1,5 @@
 import { ExecutableHeader } from "../vm/ExecutableHeader"
-import { AssembledFunction } from "./FunctionIR"
+import { FunctionIR } from "./FunctionIR"
 
 export class Assembler {
     public readonly chunks: ArrayBuffer[] = []
@@ -9,11 +9,16 @@ export class Assembler {
     }
     public length = 0
 
-    public addFunction(func: AssembledFunction) {
-        func.header.offset = this.length
-        this.chunks.push(func.data)
-        this.length += func.data.byteLength
-        this.header.functions.push(func.header)
+    protected readonly functionLookup = new Map<string, number>()
+
+    public addFunction(func: FunctionIR) {
+        const index = this.header.functions.length
+        this.functionLookup.set(func.name, index)
+        const { data, header } = func.assemble(index, this.length, this.functionLookup)
+
+        this.chunks.push(data)
+        this.length += data.byteLength
+        this.header.functions.push(header)
     }
 
     public concatData() {

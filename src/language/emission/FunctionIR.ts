@@ -4,8 +4,7 @@ import { ExecutableHeader } from "../vm/ExecutableHeader"
 import { AnyInstructionIR } from "./InstructionIR"
 
 export class FunctionIR {
-
-    public assemble(): AssembledFunction {
+    public assemble(index: number, offset: number, functionLookup: Map<string, number>): AssembledFunction {
         const instructions: number[] = []
         const labels = new Map<string, ExecutableHeader.Label>()
 
@@ -13,7 +12,7 @@ export class FunctionIR {
             name: this.name,
             arguments: [],
             labels: [],
-            offset: 0,
+            offset,
             size: 0,
             returns: [],
             variables: []
