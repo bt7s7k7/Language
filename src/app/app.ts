@@ -49,16 +49,16 @@ const ast = Parser.parse(new SourceFile("<anon>",
  }
  ` */
     `
-    function _mul(value: number, target: number, counter: number, offset: number): number {
+    function _mul(value: number, target: number, counter: number): number {
         if (counter) {
-            return _mul(value + target, target, counter + offset, offset)
+            return _mul(value + target, target, counter + -1)
         } else {
             return value
         }
     }
     
-    function mul(a: number, b: number, offset: number, zero: number) {
-        return _mul(zero, a, b, offset)
+    function mul(a: number, b: number) {
+        return _mul(0, a, b)
     }
     `
 ))
@@ -73,6 +73,10 @@ if (ast instanceof Diagnostic) {
     )
     globalScope.register("__operator__assign", new FunctionDefinition(Span.native, "__operator__assign")
         .addOverload(GENERIC_ASSIGN)
+    )
+
+    globalScope.register("__operator__negate", new FunctionDefinition(Span.native, "__operator__negate")
+        .addOverload(Double64.CONST_NEGATE)
     )
 
     const program = Typing.parse(ast, globalScope)
@@ -91,7 +95,7 @@ if (ast instanceof Diagnostic) {
         console.log(inspect(build, undefined, Infinity, true))
 
         const vm = new BytecodeVM(build.header, build.data)
-        const result = vm.directCall(1, [new Float64Array([5, 25, -1, 0]).buffer], 8)
+        const result = vm.directCall(1, [new Float64Array([5, 25]).buffer], 8)
         console.log(result)
     }
 }

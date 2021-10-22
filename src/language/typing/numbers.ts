@@ -1,6 +1,8 @@
 import exp = require("constants")
 import { Diagnostic } from "../Diagnostic"
+import { FunctionIRBuilder } from "../emission/InstructionPrinter"
 import { Span } from "../Span"
+import { Instructions } from "../vm/Instructions"
 import { Type } from "./Type"
 import { ConstExpr } from "./types/ConstExpr"
 import { InstanceType } from "./types/InstanceType"
@@ -13,6 +15,11 @@ export namespace Double64 {
     }
 
     export class Constant extends Value {
+        public emit(builder: FunctionIRBuilder) {
+            builder.pushInstruction(Instructions.CONST, 8, [...new Uint32Array(new Float64Array([this.value]).buffer)])
+            return 8
+        }
+
         constructor(
             span: Span,
             public readonly value: number,
@@ -35,6 +42,24 @@ export namespace Double64 {
         }
 
         constructor() { super(Span.native, "__operator__add") }
+
+    }
+
+    export const CONST_NEGATE = new class extends SpecificFunction {
+        public match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
+            const types = SpecificFunction.testConstExpr<[number]>(span, [Double64.TYPE], args, argSpans)
+            if (types instanceof Diagnostic) return types
+
+            const result = -types[0]
+
+            return {
+                target: this,
+                arguments: args.map((v, i) => ({ name: "a"[i], type: v })),
+                result: new ConstExpr(span, Double64.TYPE, result)
+            }
+        }
+
+        constructor() { super(Span.native, "__operator__negate") }
 
     }
 }

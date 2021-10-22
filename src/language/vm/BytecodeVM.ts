@@ -127,6 +127,7 @@ export class BytecodeVM {
 
     protected makeCall(index: number) {
         const func = this.config.functions[index]
+        if (!func) throw new Error("Function index out of range")
         console.log("Called function", [func.name])
         if (!func) throw unreachable()
         let size = 0
