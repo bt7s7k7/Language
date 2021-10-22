@@ -3,11 +3,11 @@ import { EmissionUtil } from "../../emission/EmissionUtil"
 import { FunctionIRBuilder } from "../../emission/InstructionPrinter"
 import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
-import { Double64 } from "../numbers"
 import { Type } from "../Type"
 import { Never } from "../types/base"
 import { SpecificFunction } from "../types/SpecificFunction"
 import { Invocation } from "../values/Invocation"
+import { VariableDereference } from "../values/VariableDereference"
 import { IntrinsicFunction } from "./IntrinsicFunction"
 
 abstract class Operation extends IntrinsicFunction {
@@ -46,5 +46,21 @@ export namespace IntrinsicMaths {
         }
 
         constructor() { super("__operator_add", 2) }
+    }
+
+    export class Assignment extends Operation {
+        public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
+            const type = invocation.type
+            const subtype = EmissionUtil.getTypeCode(type)
+            const variable = invocation.args[0]
+            if (!(variable instanceof VariableDereference)) throw new Error("Assignment target is not a variable")
+
+            EmissionUtil.safeEmit(builder, type.size, invocation.args[1])
+            variable.emitStore(builder)
+
+            return 0
+        }
+
+        constructor() { super("__operator_assign", 2) }
     }
 }

@@ -170,9 +170,14 @@ export namespace Typing {
             } else if (node instanceof VariableDeclarationNode) {
                 const name = node.name
                 const body = node.body ? assetValue(parseExpressionNode(node.body, scope), node.span) : null
-                const type = node.type ? parseExpressionNode(node.type, scope) : body?.type
+                let type = node.type ? parseExpressionNode(node.type, scope) : body?.type
                 if (!type) throw new ParsingError(new Diagnostic("Cannot get type of variable declaration", node.span))
                 if (!(type instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", node.type!.span))
+
+                if (type instanceof ConstExpr) {
+                    type = type.type
+                }
+
                 if (body && !body.type.assignableTo(type)) throw new ParsingError(notAssignable(body.type, type, body.span))
 
                 const variable = new Variable(node.span, type, name)
@@ -180,7 +185,7 @@ export namespace Typing {
                 if (!body) return new NOP(node.span)
 
                 const handler = (scope.get("__operator__assign") ?? unreachable()) as FunctionDefinition
-                return createInvocation(node.span, handler, [new VariableDereference(node.span, variable), body])
+                return createInvocation(node.span, handler, [new VariableDereference(node.span, variable, !!"is declaration"), body])
             } else if (node instanceof InvocationNode) {
                 const handler = parseExpressionNode(node.target, scope)
                 if (!(handler instanceof FunctionDefinition)) throw new ParsingError(new Diagnostic(`Target is not callable`, node.span))

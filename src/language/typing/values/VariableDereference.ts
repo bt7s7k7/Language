@@ -11,8 +11,16 @@ export class VariableDereference extends Value {
         return this.variable.type.size
     }
 
+    public emitStore(builder: FunctionIRBuilder) {
+        if (this.isDeclaration) {
+            builder.registerVariable("variables", this.span, this.variable.name, this.variable.type.size)
+        }
+        builder.pushInstruction(Instructions.STORE, this.variable.type.size, [this.variable.name])
+    }
+
     constructor(
         span: Span,
-        public readonly variable: Variable
+        public readonly variable: Variable,
+        public readonly isDeclaration: boolean = false
     ) { super(span, variable.type) }
 }

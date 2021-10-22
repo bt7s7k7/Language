@@ -7,7 +7,6 @@ import { Parser } from "../language/parsing/Parser"
 import { SourceFile } from "../language/parsing/SourceFile"
 import { Position } from "../language/Position"
 import { Span } from "../language/Span"
-import { GENERIC_ASSIGN } from "../language/typing/basic"
 import { IntrinsicMaths } from "../language/typing/intrinsic/IntrinsicMaths"
 import { Double64 } from "../language/typing/numbers"
 import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
@@ -49,16 +48,9 @@ const ast = Parser.parse(new SourceFile("<anon>",
  }
  ` */
     `
-    function _mul(value: number, target: number, counter: number): number {
-        if (counter) {
-            return _mul(value + target, target, counter + -1)
-        } else {
-            return value
-        }
-    }
-    
     function mul(a: number, b: number) {
-        return _mul(0, a, b)
+        var counter = 10
+        return counter
     }
     `
 ))
@@ -72,7 +64,7 @@ if (ast instanceof Diagnostic) {
         .addOverload(new IntrinsicMaths.Addition())
     )
     globalScope.register("__operator__assign", new FunctionDefinition(Span.native, "__operator__assign")
-        .addOverload(GENERIC_ASSIGN)
+        .addOverload(new IntrinsicMaths.Assignment())
     )
 
     globalScope.register("__operator__negate", new FunctionDefinition(Span.native, "__operator__negate")
@@ -84,6 +76,7 @@ if (ast instanceof Diagnostic) {
         console.log(inspect(ast, undefined, Infinity, true))
         console.log(inspect(program, undefined, Infinity, true))
     } else {
+        console.log(inspect(program, undefined, Infinity, true))
         const emission = Emitter.emit(program)
         console.log(inspect(emission, undefined, Infinity, true))
         const assembler = new Assembler()
@@ -95,7 +88,7 @@ if (ast instanceof Diagnostic) {
         console.log(inspect(build, undefined, Infinity, true))
 
         const vm = new BytecodeVM(build.header, build.data)
-        const result = vm.directCall(1, [new Float64Array([5, 25]).buffer], 8)
+        const result = vm.directCall(0, [new Float64Array([5, 25]).buffer], 8)
         console.log(result)
     }
 }
