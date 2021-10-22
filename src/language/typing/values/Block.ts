@@ -1,10 +1,23 @@
+import { FunctionIRBuilder } from "../../emission/InstructionPrinter"
 import { Span } from "../../Span"
+import { Instructions } from "../../vm/Instructions"
 import { Void } from "../types/base"
 import { Value } from "../Value"
 
 export class Block extends Value {
+
+    public override emit(builder: FunctionIRBuilder) {
+        for (const statement of this.statements) {
+            const size = statement.emit(builder)
+            if (size > 0) {
+                builder.pushInstruction(Instructions.DROP, size)
+            }
+        }
+        return 0
+    }
+
     constructor(
         span: Span,
-        public readonly exprs: Value[]
+        public readonly statements: Value[]
     ) { super(span, Void.TYPE) }
 }

@@ -18,7 +18,13 @@ export class ProgramFunction extends SpecificFunction {
     constructor(
         span: Span, name: string,
         public readonly result: Type,
-        public readonly args: SpecificFunction.Argument[],
+        public readonly args: ProgramFunction.Argument[],
         public readonly body: Value
     ) { super(span, `${name}(${args.map(v => `${v.name}: ${v.type.name}`).join(", ")}): ${result.name}`) }
+}
+
+export namespace ProgramFunction {
+    export interface Argument extends SpecificFunction.Argument {
+        span: Span
+    }
 }

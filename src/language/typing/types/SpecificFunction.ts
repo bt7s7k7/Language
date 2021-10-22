@@ -10,7 +10,7 @@ export abstract class SpecificFunction extends Type {
     constructor(
         span: Span,
         name: string,
-    ) { super(span, name) }
+    ) { super(span, name, Type.NOT_INSTANTIABLE) }
 }
 
 export namespace SpecificFunction {

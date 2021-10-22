@@ -93,11 +93,11 @@ export class BytecodeVM {
                     const labelIndex = ctx.data[ctx.pc]
                     ctx.pc++
                     const predicate = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const label = ctx.function.labels[labelIndex]
                     if (!predicate == !(inst == Instructions.BR_TRUE)) {
-                        const label = ctx.function.labels[labelIndex]
                         console.log("Jump:", label.name)
                         ctx.pc = label.offset
-                    } else console.log("Jump skipped")
+                    } else console.log("Jump skipped:", label.name)
                 } break
                 case Instructions.BR: {
                     const labelIndex = ctx.data[ctx.pc]

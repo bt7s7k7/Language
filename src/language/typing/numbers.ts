@@ -9,7 +9,7 @@ import { Value } from "./Value"
 
 export namespace Double64 {
     export const TYPE = new class Double64 extends InstanceType {
-        constructor() { super(Span.native, "number") }
+        constructor() { super(Span.native, "number", 8) }
     }
 
     export class Constant extends Value {

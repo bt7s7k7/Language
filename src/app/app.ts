@@ -1,8 +1,31 @@
 import chalk = require("chalk")
 import { inspect } from "util"
+import { Diagnostic } from "../language/Diagnostic"
+import { Assembler } from "../language/emission/Assembler"
+import { Emitter } from "../language/emission/Emitter"
+import { Parser } from "../language/parsing/Parser"
+import { SourceFile } from "../language/parsing/SourceFile"
+import { Position } from "../language/Position"
+import { Span } from "../language/Span"
+import { GENERIC_ASSIGN } from "../language/typing/basic"
+import { IntrinsicMaths } from "../language/typing/intrinsic/IntrinsicMaths"
+import { Double64 } from "../language/typing/numbers"
+import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
+import { Typing } from "../language/typing/Typing"
+import { stringifySpan } from "../language/util"
 import { BytecodeVM } from "../language/vm/BytecodeVM"
-import { Instructions } from "../language/vm/Instructions"
 import { MemoryView } from "../language/vm/Memory"
+
+// @ts-ignore
+Span.prototype[inspect.custom] = function (this: Span) {
+    if (this == Span.native) return chalk.blueBright("<native>")
+    return "\n" + chalk.blueBright(stringifySpan(this.pos.file, this.pos.line, this.pos.column, this.length))
+}
+
+// @ts-ignore
+Position.prototype._s = Position.prototype[inspect.custom] = function (this: Position) {
+    return "\n" + chalk.blueBright(stringifySpan(this.file, this.line, this.column, 1))
+}
 
 // @ts-ignore
 MemoryView.prototype[inspect.custom] = function (this: MemoryView) {
@@ -14,105 +37,51 @@ MemoryView.prototype[inspect.custom] = function (this: MemoryView) {
     return chalk.yellow(`[${this.length}]${[...this.getUint8Array()].map(v => v.toString(16).padStart(2, "0")).join("").replace(/^0+/, "")}${represent}`)
 }
 
+const ast = Parser.parse(new SourceFile("<anon>",
+    /* `
+ function fibonacci(i: int) {
+     if (i == 0 || i == 1) return 0
+     return fibonacci(i - 1) + fibonacci(i - 2)
+ }
+ 
+ function main() {
+     return fibonacci(6)
+ }
+ ` */
+    `function foo(a: number, b: number, c: number) {
+        return if (c) a else b
+    }`
+))
+if (ast instanceof Diagnostic) {
+    console.log(inspect(ast, undefined, Infinity, true))
+} else {
+    const globalScope = new Typing.Scope()
+    globalScope.register("number", Double64.TYPE)
+    globalScope.register("__operator__add", new FunctionDefinition(Span.native, "__operator__add")
+        .addOverload(Double64.CONST_ADD)
+        .addOverload(new IntrinsicMaths.Addition())
+    )
+    globalScope.register("__operator__assign", new FunctionDefinition(Span.native, "__operator__assign")
+        .addOverload(GENERIC_ASSIGN)
+    )
 
-const vm = new BytecodeVM({
-    data: [],
-    functions: [
-        {
-            name: "main",
-            arguments: [
-                {
-                    name: "a",
-                    size: 8
-                },
-                {
-                    name: "b",
-                    size: 8
-                }
-            ],
-            variables: [
-                {
-                    name: "counter",
-                    size: 8,
-                }
-            ],
-            returns: [
-                {
-                    name: "ret",
-                    size: 8
-                }
-            ],
-            labels: [
-                {
-                    name: "loop_start",
-                    offset: 4
-                },
-                {
-                    name: "loop_end",
-                    offset: 25
-                }
-            ],
-            offset: 44,
-            size: 104
-        },
-        {
-            name: "main",
-            arguments: [],
-            variables: [],
-            returns: [
-                {
-                    name: "ret",
-                    size: 8
-                }
-            ],
-            labels: [],
-            offset: 0,
-            size: 44
+    const program = Typing.parse(ast, globalScope)
+    if (program instanceof Array) {
+        console.log(inspect(ast, undefined, Infinity, true))
+        console.log(inspect(program, undefined, Infinity, true))
+    } else {
+        const emission = Emitter.emit(program)
+        console.log(inspect(emission, undefined, Infinity, true))
+        const assembler = new Assembler()
+        for (const symbol of emission.values()) {
+            assembler.addFunction(symbol.assemble())
         }
-    ]
-}, new Uint32Array([
-    (Instructions.CONST << 16) | 8,
-    ...new Uint32Array(new Float64Array([7]).buffer),
-    (Instructions.CONST << 16) | 8,
-    ...new Uint32Array(new Float64Array([4]).buffer),
-    Instructions.CALL << 16,
-    0,
-    (Instructions.STORE << 16) | 8,
-    0,
-    Instructions.RETURN << 16,
 
-    (Instructions.LOAD << 16) | 8,
-    0,
-    (Instructions.STORE << 16) | 8,
-    2,
+        const build = assembler.build()
+        console.log(inspect(build, undefined, Infinity, true))
 
-    (Instructions.LOAD << 16) | 8,
-    2,
-    (Instructions.BR_FALSE << 16) | Instructions.Types.FLOAT64,
-    1,
-
-    (Instructions.LOAD << 16) | 8,
-    2,
-    (Instructions.CONST << 16) | 8,
-    ...new Uint32Array(new Float64Array([-1]).buffer),
-    (Instructions.ADD << 16) | Instructions.Types.FLOAT64,
-    (Instructions.STORE << 16) | 8,
-    2,
-
-    (Instructions.LOAD << 16) | 8,
-    1,
-    (Instructions.LOAD << 16) | 8,
-    3,
-    (Instructions.ADD << 16) | Instructions.Types.FLOAT64,
-    (Instructions.STORE << 16) | 8,
-    3,
-
-    Instructions.BR << 16,
-    0,
-
-    Instructions.RETURN << 16,
-]).buffer)
-
-const result = vm.directCall(1, [], 8)
-
-console.log(result.as(Float64Array))
+        const vm = new BytecodeVM(build.header, build.data)
+        const result = vm.directCall(0, [new Float64Array([5, 20, 1]).buffer], 8)
+        console.log(result)
+    }
+}

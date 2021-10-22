@@ -11,5 +11,5 @@ export class ConstExpr extends Type {
         span: Span,
         public readonly type: Type,
         public readonly value: any
-    ) { super(span, `<${type.name}> ${stringifyValue(value)}`) }
+    ) { super(span, `<${type.name}> ${stringifyValue(value)}`, type.size) }
 }

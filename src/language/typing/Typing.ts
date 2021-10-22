@@ -19,7 +19,6 @@ import { ConstExpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
 import { ProgramFunction } from "./types/ProgramFunction"
-import { SpecificFunction } from "./types/SpecificFunction"
 import { Value } from "./Value"
 import { Block } from "./values/Block"
 import { IfStatement } from "./values/IfStatement"
@@ -103,7 +102,7 @@ export namespace Typing {
     }
 
     export function parse(rootNode: RootNode, globalScope: Scope) {
-        const rootScope = new Scope(globalScope)
+        const rootScope = globalScope
 
         function createConstant(constexpr: ConstExpr) {
             if (constexpr.type == Double64.TYPE) return new Double64.Constant(constexpr.span, constexpr.value, constexpr)
@@ -126,6 +125,7 @@ export namespace Typing {
                 const value = scope.get(node.name)
                 if (!value) throw new ParsingError(new Diagnostic(`Cannot find name "${node.name}"`, node.span))
                 if (value instanceof Type) return value
+                if (!(value instanceof Variable)) throw new Error("Found value in scope but it's not a Variable, got " + value.constructor.name)
                 return new VariableDereference(node.span, value)
             } else if (node instanceof NumberLiteral) {
                 return new Double64.Constant(node.span, node.value, new ConstExpr(node.span, Double64.TYPE, node.value))
@@ -173,7 +173,7 @@ export namespace Typing {
                 if (!(type instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", node.type!.span))
                 if (body && !body.type.assignableTo(type)) throw new ParsingError(notAssignable(body.type, type, body.span))
 
-                const variable = new Variable(node.span, type)
+                const variable = new Variable(node.span, type, name)
                 scope.register(name, variable)
                 if (!body) return new NOP(node.span)
 
@@ -188,7 +188,7 @@ export namespace Typing {
             if (resultType != null && !(resultType instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", func.type!.span))
             const construct = new FunctionConstruct(resultType)
             const innerScope = new Scope(scope, construct)
-            const args: SpecificFunction.Argument[] = []
+            const args: ProgramFunction.Argument[] = []
 
             for (const argument of func.args) {
                 const name = argument.name
@@ -199,8 +199,8 @@ export namespace Typing {
                 const type = parseExpressionNode(typeExpr, innerScope)
                 if (!(type instanceof InstanceType)) throw new ParsingError(new Diagnostic("Expected type", typeExpr.span), new Diagnostic("Declared here", type.span))
 
-                args.push({ type, name })
-                innerScope.register(name, new Variable(argument.span, type))
+                args.push({ type, name, span: argument.span })
+                innerScope.register(name, new Variable(argument.span, type, name))
             }
 
 

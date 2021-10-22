@@ -1,0 +1,45 @@
+import { Diagnostic } from "../Diagnostic"
+import { Program } from "../typing/Program"
+import { Type } from "../typing/Type"
+import { FunctionDefinition } from "../typing/types/FunctionDefinition"
+import { ProgramFunction } from "../typing/types/ProgramFunction"
+import { EmissionUtil } from "./EmissionUtil"
+import { FunctionIR } from "./FunctionIR"
+import { FunctionIRBuilder } from "./InstructionPrinter"
+
+class EmittingError extends Error {
+    public name = "EmittingError"
+    public readonly diagnostics
+    constructor(
+        ...diagnostics: Diagnostic[]
+    ) { super(); this.diagnostics = diagnostics }
+}
+
+export namespace Emitter {
+    export function emit(program: Program) {
+        const functions = new Map<string, FunctionIR>()
+
+        for (const symbol of program.entries.values()) {
+            if (symbol instanceof FunctionDefinition) {
+                for (const overload of symbol.overloads) {
+                    if (overload instanceof ProgramFunction) {
+                        const builder = new FunctionIRBuilder()
+
+                        for (const arg of overload.args) {
+                            if (arg.type.size == Type.NOT_INSTANTIABLE) throw new EmittingError(new Diagnostic("Type is not instantiable", arg.span))
+                            builder.registerVariable("arguments", arg.span, arg.name, arg.type.size)
+                        }
+
+                        overload.body.emit(builder)
+
+                        builder.registerVariable("returns", overload.result.span, EmissionUtil.RETURN_VARIABLE_NAME, overload.result.size)
+
+                        functions.set(overload.name, new FunctionIR(overload.span, overload.name, builder.variables, builder.instructions))
+                    }
+                }
+            }
+        }
+
+        return functions
+    }
+}

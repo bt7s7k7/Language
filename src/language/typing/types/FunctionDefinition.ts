@@ -26,4 +26,8 @@ export class FunctionDefinition extends Type {
         this.overloads.push(overload)
         return this
     }
+
+    constructor(span: Span, name: string) {
+        super(span, name, Type.NOT_INSTANTIABLE)
+    }
 }
