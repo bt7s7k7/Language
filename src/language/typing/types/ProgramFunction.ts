@@ -15,12 +15,20 @@ export class ProgramFunction extends SpecificFunction {
         }
     }
 
+    public regenerateName(basename: string) {
+        this.name = ProgramFunction.generateName(basename, this.args, this.result)
+    }
+
     constructor(
         span: Span, name: string,
         public result: Type,
         public readonly args: ProgramFunction.Argument[],
-        public body: Value
-    ) { super(span, `${name}(${args.map(v => `${v.name}: ${v.type.name}`).join(", ")}): ${result.name}`) }
+        public body: Value | "extern"
+    ) { super(span, ProgramFunction.generateName(name, args, result)) }
+
+    public static generateName(basename: string, args: ProgramFunction.Argument[], result: Type) {
+        return `${basename}(${args.map(v => `${v.name}: ${v.type.name}`).join(", ")}): ${result.name}`
+    }
 }
 
 export namespace ProgramFunction {

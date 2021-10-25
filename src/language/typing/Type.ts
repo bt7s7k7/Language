@@ -7,7 +7,7 @@ export abstract class Type {
 
     constructor(
         public readonly span: Span,
-        public readonly name: string,
+        public name: string,
         public readonly size: number
     ) { }
 }

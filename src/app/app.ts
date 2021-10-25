@@ -9,6 +9,7 @@ import { Position } from "../language/Position"
 import { Span } from "../language/Span"
 import { IntrinsicMaths } from "../language/typing/intrinsic/IntrinsicMaths"
 import { Double64 } from "../language/typing/numbers"
+import { Void } from "../language/typing/types/base"
 import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
 import { Typing } from "../language/typing/Typing"
 import { stringifySpan } from "../language/util"
@@ -48,9 +49,16 @@ const ast = Parser.parse(new SourceFile("<anon>",
  }
  ` */
     `
-    function mul(a: number, b: number) {
-        return a < b
+    function print(msg: number): void => extern
+    
+    function main() {
+        var i = 0
+        while (i <= 10) {
+            print(i)
+            i = i + 1
+        }
     }
+
     `
 ))
 if (ast instanceof Diagnostic) {
@@ -58,6 +66,7 @@ if (ast instanceof Diagnostic) {
 } else {
     const globalScope = new Typing.Scope()
     globalScope.register("number", Double64.TYPE)
+    globalScope.register("void", Void.TYPE)
 
     globalScope.register("__operator__add", new FunctionDefinition(Span.native, "__operator__add")
         .addOverload(Double64.CONST_ADD)
@@ -125,7 +134,12 @@ if (ast instanceof Diagnostic) {
         console.log(inspect(build, undefined, Infinity, true))
 
         const vm = new BytecodeVM(build.header, build.data)
-        const result = vm.directCall(0, [new Float64Array([5, 25]).buffer], 8)
+        vm.externFunctions.set("print(msg: number): void", (ctx, vm) => {
+            const value = vm.variableStack.read(ctx.references[0], 8)
+            console.log(chalk.cyanBright("==>"), value)
+        })
+
+        const result = vm.directCall(vm.findFunction("main(): void"), [new Float64Array([5, 25]).buffer], 8)
         console.log(result)
     }
 }

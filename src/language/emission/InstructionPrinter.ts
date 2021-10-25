@@ -1,10 +1,11 @@
 import { Span } from "../Span"
 import { VariableIR } from "./FunctionIR"
-import { AnyInstructionIR } from "./InstructionIR"
+import { AnyInstructionIR, InstructionIR } from "./InstructionIR"
 
 export class FunctionIRBuilder {
     public readonly variables = new Map<string, VariableIR>()
     public readonly instructions: AnyInstructionIR[] = []
+    public lastInstruction: InstructionIR | null = null
     protected id = 0
 
     public registerVariable(type: VariableIR["type"], span: Span, name: string, size: number) {
@@ -12,7 +13,7 @@ export class FunctionIRBuilder {
     }
 
     public pushInstruction(code: number, subtype = 0, args: (string | number)[] = []) {
-        this.instructions.push({ args, code, subtype })
+        this.instructions.push(this.lastInstruction = { args, code, subtype })
     }
 
     public pushLabel(name: string) {

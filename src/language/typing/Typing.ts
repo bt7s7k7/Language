@@ -229,10 +229,15 @@ export namespace Typing {
 
             innerScope.register(name, definition)
 
-            const body = parseExpressionNode(func.body, innerScope)
-            if (!(body instanceof Value)) throw new ParsingError(new Diagnostic("Expected value result", func.span))
-            if (resultType == null) self.result = construct.implicitReturnType ?? body.type
+            const body = func.body == "extern" ? "extern" : parseExpressionNode(func.body, innerScope)
+            if (body != "extern" && !(body instanceof Value)) throw new ParsingError(new Diagnostic("Expected value result", func.span))
+            if (resultType == null) {
+                if (body == "extern") throw new ParsingError(new Diagnostic("Explicit return type is required for extern functions", func.span))
+                self.result = construct.implicitReturnType ?? body.type
+            }
+
             self.body = body
+            self.regenerateName(definition.name)
 
             scope.register(name, definition)
         }

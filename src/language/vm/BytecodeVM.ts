@@ -22,6 +22,7 @@ export class BytecodeVM {
     public readonly stack = new Memory()
     public readonly variableStack = new Memory()
     public readonly controlStack: ExecutionContext[] = []
+    public readonly externFunctions = new Map<string, (ctx: ExecutionContext, vm: BytecodeVM) => void>()
 
     public directCall(functionIndex: number, args: ArrayBuffer[], returnSize: number) {
         for (const arg of args) {
@@ -33,17 +34,31 @@ export class BytecodeVM {
         return this.stack.pop(returnSize)
     }
 
+    public findFunction(name: string) {
+        return this.config.functions.findIndex(v => v.name == name) ?? unreachable()
+    }
+
     public run(entryFunctionIndex: number) {
         this.controlStack.push(this.makeCall(entryFunctionIndex))
         let ctx = this.controlStack[this.controlStack.length - 1]
 
-        while (ctx.pc < ctx.data.length) {
+        while (ctx.pc < ctx.data.length || ctx.function.offset == -1) {
+            if (ctx.function.offset == -1) {
+                const extern = this.externFunctions.get(ctx.function.name)
+                if (!extern) throw new Error(`Cannot find extern function for '${ctx.function.name}'`)
+                extern(ctx, this)
+                const entry = this.controlStack.pop()!
+                this.makeReturn(entry)
+                if (this.controlStack.length == 0) return
+                ctx = this.controlStack[this.controlStack.length - 1]
+                continue
+            }
+
             const curr = ctx.data[ctx.pc]
             const inst = (curr & 0xffff0000) >>> 16
             const subtype = curr & 0x0000ffff
             console.log("PC:", ctx.pc)
             ctx.pc++
-
 
             switch (inst) {
                 case Instructions.LOAD: {

@@ -10,6 +10,6 @@ export class FunctionDefinitionNode extends ASTNode {
         public readonly name: string,
         public readonly args: DeclarationNode[],
         public readonly type: ExpressionNode | null,
-        public readonly body: BlockNode
+        public readonly body: BlockNode | "extern"
     ) { super(span) }
 }

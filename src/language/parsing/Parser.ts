@@ -44,10 +44,10 @@ const OPERATORS: OperatorDefinition[] = [
     { name: "add", text: "+", type: "binary", presentence: 2 },
     { name: "sub", text: "-", type: "binary", presentence: 2 },
     { name: "eq", text: "==", type: "binary", presentence: 3 },
-    { name: "gt", text: ">", type: "binary", presentence: 3 },
-    { name: "lt", text: "<", type: "binary", presentence: 3 },
     { name: "gte", text: ">=", type: "binary", presentence: 3 },
     { name: "lte", text: "<=", type: "binary", presentence: 3 },
+    { name: "gt", text: ">", type: "binary", presentence: 3 },
+    { name: "lt", text: "<", type: "binary", presentence: 3 },
     { name: "or", text: "||", type: "binary", presentence: 4 },
     { name: "assign", text: "=", type: "binary", presentence: 5 },
 ]
@@ -391,10 +391,14 @@ export namespace Parser {
             skipWhitespace()
             const type = consume(":") ? (skipWhitespace(), parseExpression()) : null
             skipWhitespace()
-            let body = consume("{") ? parseBlock("}") : null
-            if (!body) {
-                consume("=>")
-                body = parseExpression()
+            let body: FunctionDefinitionNode["body"] | null = consume("{") ? parseBlock("}") : null
+            if (!body && consume("=>")) {
+                skipWhitespace()
+                if (consume("extern")) {
+                    body = "extern"
+                } else {
+                    body = parseExpression()
+                }
             }
 
             if (!body) throw new ParsingFailure("Expected function body")

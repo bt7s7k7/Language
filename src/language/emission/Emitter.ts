@@ -2,10 +2,12 @@ import { Diagnostic } from "../Diagnostic"
 import { Span } from "../Span"
 import { Program } from "../typing/Program"
 import { Type } from "../typing/Type"
+import { Void } from "../typing/types/base"
 import { FunctionDefinition } from "../typing/types/FunctionDefinition"
 import { ProgramFunction } from "../typing/types/ProgramFunction"
 import { Block } from "../typing/values/Block"
 import { Return } from "../typing/values/Return"
+import { Instructions } from "../vm/Instructions"
 import { EmissionUtil } from "./EmissionUtil"
 import { FunctionIR } from "./FunctionIR"
 import { FunctionIRBuilder } from "./InstructionPrinter"
@@ -33,15 +35,27 @@ export namespace Emitter {
                             builder.registerVariable("arguments", arg.span, arg.name, arg.type.size)
                         }
 
-                        if (overload.body instanceof Block) {
-                            overload.body.emit(builder)
-                        } else {
-                            new Block(Span.native, [new Return(Span.native, overload.body)]).emit(builder)
+                        if (overload.body != "extern") {
+                            if (overload.body instanceof Block) {
+                                overload.body.emit(builder)
+                            } else {
+                                new Block(Span.native, [new Return(Span.native, overload.body)]).emit(builder)
+                            }
+                        }
+
+                        if (overload.result == Void.TYPE && builder.lastInstruction?.code != Instructions.RETURN) {
+                            builder.pushInstruction(Instructions.RETURN)
                         }
 
                         builder.registerVariable("returns", overload.result.span, EmissionUtil.RETURN_VARIABLE_NAME, overload.result.size)
 
-                        functions.set(overload.name, new FunctionIR(overload.span, overload.name, builder.variables, builder.instructions))
+                        functions.set(overload.name, {
+                            isExtern: overload.body == "extern",
+                            instructions: builder.instructions,
+                            variables: builder.variables,
+                            name: overload.name,
+                            span: overload.span
+                        })
                     }
                 }
             }
