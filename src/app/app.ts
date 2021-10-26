@@ -8,7 +8,7 @@ import { SourceFile } from "../language/parsing/SourceFile"
 import { Position } from "../language/Position"
 import { Span } from "../language/Span"
 import { IntrinsicMaths } from "../language/typing/intrinsic/IntrinsicMaths"
-import { Double64 } from "../language/typing/numbers"
+import { Primitives } from "../language/typing/Primitives"
 import { Void } from "../language/typing/types/base"
 import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
 import { Typing } from "../language/typing/Typing"
@@ -65,47 +65,47 @@ if (ast instanceof Diagnostic) {
     console.log(inspect(ast, undefined, Infinity, true))
 } else {
     const globalScope = new Typing.Scope()
-    globalScope.register("number", Double64.TYPE)
+    globalScope.register("number", Primitives.Number.TYPE)
     globalScope.register("void", Void.TYPE)
 
     globalScope.register("__operator__add", new FunctionDefinition(Span.native, "__operator__add")
-        .addOverload(Double64.CONST_ADD)
+        .addOverload(Primitives.Number.CONST_ADD)
         .addOverload(IntrinsicMaths.ADD)
     )
     globalScope.register("__operator__sub", new FunctionDefinition(Span.native, "__operator__sub")
-        .addOverload(Double64.CONST_SUB)
+        .addOverload(Primitives.Number.CONST_SUB)
         .addOverload(IntrinsicMaths.SUB)
     )
     globalScope.register("__operator__mul", new FunctionDefinition(Span.native, "__operator__mul")
-        .addOverload(Double64.CONST_MUL)
+        .addOverload(Primitives.Number.CONST_MUL)
         .addOverload(IntrinsicMaths.MUL)
     )
     globalScope.register("__operator__div", new FunctionDefinition(Span.native, "__operator__div")
-        .addOverload(Double64.CONST_DIV)
+        .addOverload(Primitives.Number.CONST_DIV)
         .addOverload(IntrinsicMaths.DIV)
     )
     globalScope.register("__operator__mod", new FunctionDefinition(Span.native, "__operator__mod")
-        .addOverload(Double64.CONST_MOD)
+        .addOverload(Primitives.Number.CONST_MOD)
         .addOverload(IntrinsicMaths.MOD)
     )
     globalScope.register("__operator__eq", new FunctionDefinition(Span.native, "__operator__eq")
-        .addOverload(Double64.CONST_EQ)
+        .addOverload(Primitives.Number.CONST_EQ)
         .addOverload(IntrinsicMaths.EQ)
     )
     globalScope.register("__operator__lt", new FunctionDefinition(Span.native, "__operator__lt")
-        .addOverload(Double64.CONST_LT)
+        .addOverload(Primitives.Number.CONST_LT)
         .addOverload(IntrinsicMaths.LT)
     )
     globalScope.register("__operator__gt", new FunctionDefinition(Span.native, "__operator__gt")
-        .addOverload(Double64.CONST_GT)
+        .addOverload(Primitives.Number.CONST_GT)
         .addOverload(IntrinsicMaths.GT)
     )
     globalScope.register("__operator__lte", new FunctionDefinition(Span.native, "__operator__lte")
-        .addOverload(Double64.CONST_LTE)
+        .addOverload(Primitives.Number.CONST_LTE)
         .addOverload(IntrinsicMaths.LTE)
     )
     globalScope.register("__operator__gte", new FunctionDefinition(Span.native, "__operator__gte")
-        .addOverload(Double64.CONST_GTE)
+        .addOverload(Primitives.Number.CONST_GTE)
         .addOverload(IntrinsicMaths.GTE)
     )
 
@@ -114,7 +114,7 @@ if (ast instanceof Diagnostic) {
     )
 
     globalScope.register("__operator__negate", new FunctionDefinition(Span.native, "__operator__negate")
-        .addOverload(Double64.CONST_NEGATE)
+        .addOverload(Primitives.Number.CONST_NEGATE)
     )
 
     const program = Typing.parse(ast, globalScope)

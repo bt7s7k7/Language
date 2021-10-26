@@ -14,7 +14,7 @@ import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
 import { WhileNode } from "../ast/nodes/WhileNode"
 import { Diagnostic } from "../Diagnostic"
 import { Span } from "../Span"
-import { Double64 } from "./numbers"
+import { Primitives } from "./Primitives"
 import { Program } from "./Program"
 import { Type } from "./Type"
 import { Never } from "./types/base"
@@ -109,7 +109,7 @@ export namespace Typing {
         const rootScope = globalScope
 
         function createConstant(constexpr: ConstExpr) {
-            if (constexpr.type == Double64.TYPE) return new Double64.Constant(constexpr.span, constexpr.value, constexpr)
+            if (constexpr.type == Primitives.Number.TYPE) return new Primitives.Number.Constant(constexpr.span, constexpr.value, constexpr)
             else throw unreachable()
         }
 
@@ -132,7 +132,7 @@ export namespace Typing {
                 if (!(value instanceof Variable)) throw new Error("Found value in scope but it's not a Variable, got " + value.constructor.name)
                 return new VariableDereference(node.span, value)
             } else if (node instanceof NumberLiteral) {
-                return new Double64.Constant(node.span, node.value, new ConstExpr(node.span, Double64.TYPE, node.value))
+                return new Primitives.Number.Constant(node.span, node.value, new ConstExpr(node.span, Primitives.Number.TYPE, node.value))
             } else if (node instanceof ReturnStatementNode) {
                 const construct = scope.construct
                 if (!(construct instanceof FunctionConstruct)) throw new ParsingError(new Diagnostic("Return can only be used in a function definition", node.span))
@@ -158,7 +158,7 @@ export namespace Typing {
                     if (bodyElse && !bodyElse.type.assignableTo(body.type)) throw new ParsingError(notAssignable(bodyElse.type, body.type, node.span))
                 }
 
-                const constPredicate = isConstexpr<number>(predicate.type, Double64.TYPE)
+                const constPredicate = isConstexpr<number>(predicate.type, Primitives.Number.TYPE)
                 if (constPredicate != null) {
                     if (constPredicate) {
                         return body

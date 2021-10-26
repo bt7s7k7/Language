@@ -1,11 +1,11 @@
-import { Double64 } from "../typing/numbers"
+import { Primitives } from "../typing/Primitives"
 import { Type } from "../typing/Type"
 import { Value } from "../typing/Value"
 import { Instructions } from "../vm/Instructions"
 import { FunctionIRBuilder } from "./InstructionPrinter"
 
 const TYPE_LOOKUP = new Map<Type, number>([
-    [Double64.TYPE, Instructions.Types.FLOAT64]
+    [Primitives.Number.TYPE, Instructions.Types.FLOAT64]
 ])
 
 export namespace EmissionUtil {
