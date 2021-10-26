@@ -37,6 +37,7 @@ declare module "../ast/nodes/OperatorNode" {
 }
 
 const OPERATORS: OperatorDefinition[] = [
+    { name: "pointer", text: "*", type: "prefix", presentence: 0 },
     { name: "negate", text: "-", type: "prefix", presentence: 0 },
     { name: "mul", text: "*", type: "binary", presentence: 1 },
     { name: "div", text: "/", type: "binary", presentence: 1 },

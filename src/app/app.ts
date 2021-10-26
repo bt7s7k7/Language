@@ -68,53 +68,23 @@ if (ast instanceof Diagnostic) {
     globalScope.register("number", Primitives.Number.TYPE)
     globalScope.register("void", Void.TYPE)
 
-    globalScope.register("__operator__add", new FunctionDefinition(Span.native, "__operator__add")
-        .addOverload(Primitives.Number.CONST_ADD)
-        .addOverload(IntrinsicMaths.ADD)
-    )
-    globalScope.register("__operator__sub", new FunctionDefinition(Span.native, "__operator__sub")
-        .addOverload(Primitives.Number.CONST_SUB)
-        .addOverload(IntrinsicMaths.SUB)
-    )
-    globalScope.register("__operator__mul", new FunctionDefinition(Span.native, "__operator__mul")
-        .addOverload(Primitives.Number.CONST_MUL)
-        .addOverload(IntrinsicMaths.MUL)
-    )
-    globalScope.register("__operator__div", new FunctionDefinition(Span.native, "__operator__div")
-        .addOverload(Primitives.Number.CONST_DIV)
-        .addOverload(IntrinsicMaths.DIV)
-    )
-    globalScope.register("__operator__mod", new FunctionDefinition(Span.native, "__operator__mod")
-        .addOverload(Primitives.Number.CONST_MOD)
-        .addOverload(IntrinsicMaths.MOD)
-    )
-    globalScope.register("__operator__eq", new FunctionDefinition(Span.native, "__operator__eq")
-        .addOverload(Primitives.Number.CONST_EQ)
-        .addOverload(IntrinsicMaths.EQ)
-    )
-    globalScope.register("__operator__lt", new FunctionDefinition(Span.native, "__operator__lt")
-        .addOverload(Primitives.Number.CONST_LT)
-        .addOverload(IntrinsicMaths.LT)
-    )
-    globalScope.register("__operator__gt", new FunctionDefinition(Span.native, "__operator__gt")
-        .addOverload(Primitives.Number.CONST_GT)
-        .addOverload(IntrinsicMaths.GT)
-    )
-    globalScope.register("__operator__lte", new FunctionDefinition(Span.native, "__operator__lte")
-        .addOverload(Primitives.Number.CONST_LTE)
-        .addOverload(IntrinsicMaths.LTE)
-    )
-    globalScope.register("__operator__gte", new FunctionDefinition(Span.native, "__operator__gte")
-        .addOverload(Primitives.Number.CONST_GTE)
-        .addOverload(IntrinsicMaths.GTE)
-    )
+    for (const operatorName of [
+        "ADD", "SUB", "MUL", "DIV",
+        "MOD", "EQ", "LT", "GT", "LTE",
+        "GTE", "NEGATE"
+    ]) {
+        const funcName = `__operator__${operatorName.toLowerCase()}`
+        const definition = new FunctionDefinition(Span.native, funcName)
+
+        definition.addOverload((IntrinsicMaths as any)[operatorName])
+        for (const primitiveName of ["Number"]) {
+            definition.addOverload((Primitives as any)[primitiveName][`CONST_${operatorName}`])
+        }
+        globalScope.register(funcName, definition)
+    }
 
     globalScope.register("__operator__assign", new FunctionDefinition(Span.native, "__operator__assign")
         .addOverload(new IntrinsicMaths.Assignment())
-    )
-
-    globalScope.register("__operator__negate", new FunctionDefinition(Span.native, "__operator__negate")
-        .addOverload(Primitives.Number.CONST_NEGATE)
     )
 
     const program = Typing.parse(ast, globalScope)

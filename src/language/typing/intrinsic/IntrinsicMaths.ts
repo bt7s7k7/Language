@@ -1,8 +1,10 @@
+import exp = require("constants")
 import { Diagnostic } from "../../Diagnostic"
 import { EmissionUtil } from "../../emission/EmissionUtil"
 import { FunctionIRBuilder } from "../../emission/InstructionPrinter"
 import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
+import { Primitives } from "../Primitives"
 import { Type } from "../Type"
 import { Never } from "../types/base"
 import { SpecificFunction } from "../types/SpecificFunction"
@@ -61,6 +63,23 @@ export namespace IntrinsicMaths {
     export const GT = new BinaryOperation("__operator_gt", Instructions.GT)
     export const LTE = new BinaryOperation("__operator_lt", Instructions.LTE)
     export const GTE = new BinaryOperation("__operator_gt", Instructions.GTE)
+    export const NEGATE = new class extends Operation {
+        public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
+            const type = invocation.type
+            const subtype = EmissionUtil.getTypeCode(type)
+            const constant = (type as any)["CONSTANT"] as null | (typeof Primitives.Number.Constant)
+            if (!constant) throw new Error("Cannot create constant for type " + type.name)
+
+            EmissionUtil.safeEmit(builder, type.size, invocation.args[0])
+            EmissionUtil.safeEmit(builder, type.size, new constant(Span.native, -1))
+
+            builder.pushInstruction(Instructions.MUL, subtype)
+
+            return type.size
+        }
+
+        constructor() { super("__operator__negate", 1) }
+    }
 
     export class Assignment extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {

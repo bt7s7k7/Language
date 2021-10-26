@@ -32,6 +32,8 @@ function createNumber(name: string, size: number, container: AnyTypedArrayCtor) 
         ) { super(span, type) }
     }
 
+    Object.assign(TYPE, { "CONSTANT": Constant })
+
     class ConstBinaryOperation extends SpecificFunction {
         public match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
             const types = SpecificFunction.testConstExpr<[number, number]>(span, [TYPE, TYPE], args, argSpans)
