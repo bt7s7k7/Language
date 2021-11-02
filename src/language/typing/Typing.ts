@@ -74,7 +74,7 @@ class FunctionConstruct {
     ) { }
 }
 
-function assetValue(target: Value | Type, span: Span) {
+function assertValue(target: Value | Type, span: Span) {
     if (!(target instanceof Value)) throw new ParsingError(new Diagnostic("Expected value", span))
     return target
 }
@@ -144,7 +144,7 @@ export namespace Typing {
                 construct.setReturnType(ret)
                 return ret
             } else if (node instanceof BlockNode) {
-                return new Block(node.span, node.children.map(v => assetValue(parseExpressionNode(v, scope, true), v.span)))
+                return new Block(node.span, node.children.map(v => assertValue(parseExpressionNode(v, scope, true), v.span)))
             } else if (node instanceof OperatorNode) {
                 const operator = node.name
                 const handler = globalScope.get("__operator__" + operator)
@@ -152,9 +152,9 @@ export namespace Typing {
                 const operands = node.children.map(v => parseExpressionNode(v, scope))
                 return createInvocation(node.span, handler, operands)
             } else if (node instanceof IfStatementNode) {
-                const predicate = assetValue(parseExpressionNode(node.predicate, scope), node.span)
-                const body = assetValue(parseExpressionNode(node.body, scope), node.span)
-                const bodyElse = node.bodyElse ? assetValue(parseExpressionNode(node.bodyElse, scope), node.span) : null
+                const predicate = assertValue(parseExpressionNode(node.predicate, scope), node.span)
+                const body = assertValue(parseExpressionNode(node.body, scope), node.span)
+                const bodyElse = node.bodyElse ? assertValue(parseExpressionNode(node.bodyElse, scope), node.span) : null
                 const returns = !root
                 if (returns) {
                     if (bodyElse && !bodyElse.type.assignableTo(body.type)) throw new ParsingError(notAssignable(bodyElse.type, body.type, node.span))
@@ -172,21 +172,21 @@ export namespace Typing {
 
                 return new IfStatement(node.span, returns, predicate, body, bodyElse)
             } else if (node instanceof WhileNode) {
-                const predicate = assetValue(parseExpressionNode(node.predicate, scope), node.span)
-                const body = assetValue(parseExpressionNode(node.body, scope), node.span)
+                const predicate = assertValue(parseExpressionNode(node.predicate, scope), node.span)
+                const body = assertValue(parseExpressionNode(node.body, scope), node.span)
 
                 return new WhileLoop(node.span, predicate, body)
             } else if (node instanceof ForNode) {
                 const innerScope = new Scope(scope)
-                const initializer = node.initializer ? assetValue(parseExpressionNode(node.initializer, innerScope), node.initializer.span) : null
-                const predicate = node.predicate ? assetValue(parseExpressionNode(node.predicate, innerScope), node.predicate.span) : null
-                const increment = node.increment ? assetValue(parseExpressionNode(node.increment, innerScope), node.increment.span) : null
-                const body = assetValue(parseExpressionNode(node.body, innerScope), node.body.span)
+                const initializer = node.initializer ? assertValue(parseExpressionNode(node.initializer, innerScope), node.initializer.span) : null
+                const predicate = node.predicate ? assertValue(parseExpressionNode(node.predicate, innerScope), node.predicate.span) : null
+                const increment = node.increment ? assertValue(parseExpressionNode(node.increment, innerScope), node.increment.span) : null
+                const body = assertValue(parseExpressionNode(node.body, innerScope), node.body.span)
 
                 return new ForLoop(node.span, initializer, predicate, increment, body)
             } else if (node instanceof VariableDeclarationNode) {
                 const name = node.name
-                const body = node.body ? assetValue(parseExpressionNode(node.body, scope), node.span) : null
+                const body = node.body ? assertValue(parseExpressionNode(node.body, scope), node.span) : null
                 let type = node.type ? parseExpressionNode(node.type, scope) : body?.type
                 if (!type) throw new ParsingError(new Diagnostic("Cannot get type of variable declaration", node.span))
                 if (!(type instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", node.type!.span))
