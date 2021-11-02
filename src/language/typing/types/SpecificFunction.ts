@@ -3,6 +3,7 @@ import { Diagnostic } from "../../Diagnostic"
 import { Span } from "../../Span"
 import { Type } from "../Type"
 import { ConstExpr } from "./ConstExpr"
+import { Reference } from "./Reference"
 
 export abstract class SpecificFunction extends Type {
     public abstract match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic
@@ -30,7 +31,15 @@ export namespace SpecificFunction {
 
         for (let i = 0; i < target.length; i++) {
             if (!args[i].assignableTo(target[i].type)) {
-                return new Diagnostic(`Argument of type "${args[i].name}" is not assignable to "${target[i].name}: ${target[i].type.name}"`, argSpans[i])
+                let targetType = target[i].type
+                if (targetType instanceof Reference) {
+                    if (args[i].assignableTo(targetType.type)) {
+                        return new Diagnostic(`Argument "${target[i].name}" must be a reference value`, argSpans[i])
+                    } else {
+                        targetType = targetType.type
+                    }
+                }
+                return new Diagnostic(`Argument of type "${args[i].name}" is not assignable to "${target[i].name}: ${targetType.name}"`, argSpans[i])
             }
         }
 

@@ -52,9 +52,9 @@ const ast = Parser.parse(new SourceFile("<anon>",
     function print(msg: number): void => extern
     
     function main() {
-        for (var i = 0; i < 10; i = i + 1) {
-            print(i)
-        }
+        var i = 0;
+        (i + 1) = 2
+        return i
     }
 
     `

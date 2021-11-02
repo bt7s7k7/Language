@@ -1,10 +1,11 @@
 import { FunctionIRBuilder } from "../../emission/InstructionPrinter"
 import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
+import { IAssignable, Reference } from "../types/Reference"
 import { Value } from "../Value"
 import { Variable } from "./Variable"
 
-export class VariableDereference extends Value {
+export class VariableDereference extends Value implements IAssignable {
 
     public emit(builder: FunctionIRBuilder) {
         builder.pushInstruction(Instructions.LOAD, this.variable.type.size, [this.variable.name])
@@ -15,6 +16,7 @@ export class VariableDereference extends Value {
         if (this.isDeclaration) {
             builder.registerVariable("variables", this.span, this.variable.name, this.variable.type.size)
         }
+
         builder.pushInstruction(Instructions.STORE, this.variable.type.size, [this.variable.name])
     }
 
@@ -22,5 +24,5 @@ export class VariableDereference extends Value {
         span: Span,
         public readonly variable: Variable,
         public readonly isDeclaration: boolean = false
-    ) { super(span, variable.type) }
+    ) { super(span, new Reference(variable.type)) }
 }
