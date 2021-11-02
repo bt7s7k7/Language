@@ -2,6 +2,7 @@ import { unreachable } from "../../comTypes/util"
 import { BlockNode } from "../ast/nodes/BlockNode"
 import { DeclarationNode } from "../ast/nodes/DeclarationNode"
 import { ExpressionNode } from "../ast/nodes/ExpressionNode"
+import { ForNode } from "../ast/nodes/ForNode"
 import { FunctionDefinitionNode } from "../ast/nodes/FunctionDefinitionNode"
 import { IdentifierNode } from "../ast/nodes/IdentifierNode"
 import { IfStatementNode } from "../ast/nodes/IfStatementNode"
@@ -137,11 +138,8 @@ export namespace Parser {
             for (; ;) {
                 skipWhitespace()
 
-
                 const value = parser()
-                if (value) {
-                    ret.push(value)
-                }
+                ret.push(value)
 
                 skipWhitespace()
 
@@ -149,7 +147,7 @@ export namespace Parser {
                     break
                 }
 
-                if (delim && value && !consume(delim)) throw new ParsingFailure(`Expected "${delim}"`)
+                if (delim && !consume(delim)) throw new ParsingFailure(`Expected "${delim}"`)
             }
 
             return ret
@@ -242,6 +240,19 @@ export namespace Parser {
                         skipWhitespace()
                         const body = consume("{") ? parseBlock("}") : parseExpression()
                         ret.addChild(new WhileNode(start.span(5), predicate, body))
+                        hasTarget = true
+                        continue
+                    }
+
+                    if (consume("for")) {
+                        skipWhitespace()
+                        if (!consume("(")) throw new ParsingFailure(`Expected "("`)
+                        const predicateBlock = parseEnumerated(() => matches(";") || matches(")") ? null : parseExpression(), ";", ")")
+                        if (predicateBlock.length != 3) throw new ParsingFailure("For statement must have three statements in predicate block")
+                        const [initializer, predicate, increment] = predicateBlock
+                        skipWhitespace()
+                        const body = consume("{") ? parseBlock("}") : parseExpression()
+                        ret.addChild(new ForNode(start.span(3), initializer, predicate, increment, body))
                         hasTarget = true
                         continue
                     }

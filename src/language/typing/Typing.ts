@@ -2,6 +2,7 @@ import { unreachable } from "../../comTypes/util"
 import { ASTNode } from "../ast/ASTNode"
 import { BlockNode } from "../ast/nodes/BlockNode"
 import { ExpressionNode } from "../ast/nodes/ExpressionNode"
+import { ForNode } from "../ast/nodes/ForNode"
 import { FunctionDefinitionNode } from "../ast/nodes/FunctionDefinitionNode"
 import { IdentifierNode } from "../ast/nodes/IdentifierNode"
 import { IfStatementNode } from "../ast/nodes/IfStatementNode"
@@ -24,6 +25,7 @@ import { InstanceType } from "./types/InstanceType"
 import { ProgramFunction } from "./types/ProgramFunction"
 import { Value } from "./Value"
 import { Block } from "./values/Block"
+import { ForLoop } from "./values/ForLoop"
 import { IfStatement } from "./values/IfStatement"
 import { Invocation } from "./values/Invocation"
 import { NOP } from "./values/NOP"
@@ -174,6 +176,14 @@ export namespace Typing {
                 const body = assetValue(parseExpressionNode(node.body, scope), node.span)
 
                 return new WhileStatement(node.span, predicate, body)
+            } else if (node instanceof ForNode) {
+                const innerScope = new Scope(scope)
+                const initializer = node.initializer ? assetValue(parseExpressionNode(node.initializer, innerScope), node.initializer.span) : null
+                const predicate = node.predicate ? assetValue(parseExpressionNode(node.predicate, innerScope), node.predicate.span) : null
+                const increment = node.increment ? assetValue(parseExpressionNode(node.increment, innerScope), node.increment.span) : null
+                const body = assetValue(parseExpressionNode(node.body, innerScope), node.body.span)
+
+                return new ForLoop(node.span, initializer, predicate, increment, body)
             } else if (node instanceof VariableDeclarationNode) {
                 const name = node.name
                 const body = node.body ? assetValue(parseExpressionNode(node.body, scope), node.span) : null

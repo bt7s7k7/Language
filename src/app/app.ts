@@ -52,10 +52,8 @@ const ast = Parser.parse(new SourceFile("<anon>",
     function print(msg: number): void => extern
     
     function main() {
-        var i = 0
-        while (i <= 10) {
+        for (var i = 0; i < 10; i = i + 1) {
             print(i)
-            i = i + 1
         }
     }
 
@@ -86,6 +84,7 @@ if (ast instanceof Diagnostic) {
     globalScope.register("__operator__assign", new FunctionDefinition(Span.native, "__operator__assign")
         .addOverload(new IntrinsicMaths.Assignment())
     )
+    console.log(inspect(ast, undefined, Infinity, true))
 
     const program = Typing.parse(ast, globalScope)
     if (program instanceof Array) {
