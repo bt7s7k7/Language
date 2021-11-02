@@ -32,7 +32,7 @@ import { NOP } from "./values/NOP"
 import { Return } from "./values/Return"
 import { Variable } from "./values/Variable"
 import { VariableDereference } from "./values/VariableDereference"
-import { WhileStatement } from "./values/WhileStatement"
+import { WhileLoop } from "./values/WhileLoop"
 
 class ParsingError extends Error {
     public name = "ParsingError"
@@ -175,7 +175,7 @@ export namespace Typing {
                 const predicate = assetValue(parseExpressionNode(node.predicate, scope), node.span)
                 const body = assetValue(parseExpressionNode(node.body, scope), node.span)
 
-                return new WhileStatement(node.span, predicate, body)
+                return new WhileLoop(node.span, predicate, body)
             } else if (node instanceof ForNode) {
                 const innerScope = new Scope(scope)
                 const initializer = node.initializer ? assetValue(parseExpressionNode(node.initializer, innerScope), node.initializer.span) : null

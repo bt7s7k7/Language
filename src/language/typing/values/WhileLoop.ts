@@ -5,8 +5,7 @@ import { Instructions } from "../../vm/Instructions"
 import { Void } from "../types/base"
 import { Value } from "../Value"
 
-export class WhileStatement extends Value {
-
+export class WhileLoop extends Value {
     public emit(builder: FunctionIRBuilder) {
         const type = this.predicate.type
         const subtype = EmissionUtil.getTypeCode(type)
