@@ -88,5 +88,5 @@ function createNumber(name: string, size: number, container: AnyTypedArrayCtor) 
 }
 
 export namespace Primitives {
-    export const Number = createNumber("number", 8, Float64Array)
+    export const Number = createNumber("Number", 8, Float64Array)
 }

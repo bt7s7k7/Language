@@ -59,7 +59,7 @@ const ast = Parser.parse(new SourceFile("<anon>",
         return i
     }
     
-    function foo(target: *number) {
+    function foo(target: *Number) {
         target.* = target.* + 1
     }
 
@@ -69,8 +69,8 @@ if (ast instanceof Diagnostic) {
     console.log(inspect(ast, undefined, Infinity, true))
 } else {
     const globalScope = new Typing.Scope()
-    globalScope.register("number", Primitives.Number.TYPE)
-    globalScope.register("void", Void.TYPE)
+    globalScope.register("Number", Primitives.Number.TYPE)
+    globalScope.register("Void", Void.TYPE)
 
     for (const operatorName of [
         "ADD", "SUB", "MUL", "DIV",
@@ -117,7 +117,7 @@ if (ast instanceof Diagnostic) {
             console.log(chalk.cyanBright("==>"), value)
         })
 
-        const result = vm.directCall(vm.findFunction("main(): number"), [new Float64Array([5, 25]).buffer], 8)
+        const result = vm.directCall(vm.findFunction("main(): Number"), [new Float64Array([5, 25]).buffer], 8)
         console.log(result)
     }
 }
