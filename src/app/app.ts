@@ -54,13 +54,7 @@ const ast = Parser.parse(new SourceFile("<anon>",
     /* javascript */`
     
     function main() {
-        var i = 5
-        foo(&i)
-        return i
-    }
-    
-    function foo(target: *Number) {
-        target.* = target.* + 1
+        target.*(5)
     }
 
     `

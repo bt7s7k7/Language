@@ -3,9 +3,10 @@ import { ASTNode } from "../ASTNode"
 import { ExpressionNode } from "./ExpressionNode"
 
 export class InvocationNode extends ASTNode {
+    public target!: ASTNode
+
     constructor(
         span: Span,
-        public readonly target: ASTNode,
         public readonly args: ExpressionNode[]
     ) { super(span) }
 }

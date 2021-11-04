@@ -181,6 +181,12 @@ export namespace Parser {
                         }
 
                         child.meta = null
+                    } else if (child instanceof InvocationNode && child.target == null) {
+                        if (ii == 0) throw unreachable()
+                        const operand = expression.children.splice(ii - 1, 1)[0]
+                        child.target = operand
+                        child.span = operand.span
+                        ii--
                     }
                 }
             }
@@ -338,8 +344,8 @@ export namespace Parser {
                     }
 
                     if (consume("(")) {
-                        const target = ret.children.pop()!
                         const args: ExpressionNode[] = []
+                        const start = makePos()
                         skipWhitespace()
                         if (!consume(")")) for (; ;) {
                             skipWhitespace()
@@ -352,7 +358,7 @@ export namespace Parser {
                             if (!consume(",")) throw new ParsingFailure(`Expected expression or "," or ")"`)
                         }
 
-                        ret.addChild(new InvocationNode(target.span, target, args))
+                        ret.addChild(new InvocationNode(start.span(1), args))
                         continue
                     }
                 }
