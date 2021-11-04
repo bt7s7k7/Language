@@ -38,23 +38,25 @@ declare module "../ast/nodes/OperatorNode" {
 }
 
 const OPERATORS: OperatorDefinition[] = [
-    { name: "pointer", text: "*", type: "prefix", presentence: 0 },
-    { name: "negate", text: "-", type: "prefix", presentence: 0 },
-    { name: "mul", text: "*", type: "binary", presentence: 1 },
-    { name: "div", text: "/", type: "binary", presentence: 1 },
-    { name: "mod", text: "%", type: "binary", presentence: 1 },
-    { name: "add", text: "+", type: "binary", presentence: 2 },
-    { name: "sub", text: "-", type: "binary", presentence: 2 },
-    { name: "eq", text: "==", type: "binary", presentence: 3 },
-    { name: "gte", text: ">=", type: "binary", presentence: 3 },
-    { name: "lte", text: "<=", type: "binary", presentence: 3 },
-    { name: "gt", text: ">", type: "binary", presentence: 3 },
-    { name: "lt", text: "<", type: "binary", presentence: 3 },
-    { name: "or", text: "||", type: "binary", presentence: 4 },
-    { name: "assign", text: "=", type: "binary", presentence: 5 },
+    { name: "deref", text: ".*", type: "suffix", presentence: 0 },
+    { name: "addr", text: "&", type: "prefix", presentence: 1 },
+    { name: "as_ptr", text: "*", type: "prefix", presentence: 1 },
+    { name: "negate", text: "-", type: "prefix", presentence: 1 },
+    { name: "mul", text: "*", type: "binary", presentence: 2 },
+    { name: "div", text: "/", type: "binary", presentence: 2 },
+    { name: "mod", text: "%", type: "binary", presentence: 2 },
+    { name: "add", text: "+", type: "binary", presentence: 3 },
+    { name: "sub", text: "-", type: "binary", presentence: 3 },
+    { name: "eq", text: "==", type: "binary", presentence: 4 },
+    { name: "gte", text: ">=", type: "binary", presentence: 4 },
+    { name: "lte", text: "<=", type: "binary", presentence: 4 },
+    { name: "gt", text: ">", type: "binary", presentence: 4 },
+    { name: "lt", text: "<", type: "binary", presentence: 4 },
+    { name: "or", text: "||", type: "binary", presentence: 5 },
+    { name: "assign", text: "=", type: "binary", presentence: 6 },
 ]
 
-const MAX_PRESENTENCE = 6
+const MAX_PRESENTENCE = 7
 
 export namespace Parser {
     export function parse(file: SourceFile) {

@@ -1,7 +1,7 @@
 import { Span } from "../Span"
 
 export abstract class Type {
-    public assignableTo(other: Type) {
+    public assignableTo(other: Type): boolean {
         return other == this
     }
 

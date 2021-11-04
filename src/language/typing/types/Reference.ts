@@ -1,14 +1,27 @@
 import { FunctionIRBuilder } from "../../emission/InstructionPrinter"
 import { Span } from "../../Span"
+import { IntrinsicFunction } from "../intrinsic/IntrinsicFunction"
 import { Type } from "../Type"
 import { Value } from "../Value"
+import { Invocation } from "../values/Invocation"
+import { SpecificFunction } from "./SpecificFunction"
 
-export interface IAssignable {
+export interface IRefValue {
     emitStore(builder: FunctionIRBuilder): void
+    emitPtr(builder: FunctionIRBuilder): void
 }
 
-export function isAssignable<T extends Value>(value: T): value is T & IAssignable {
-    return "emitStore" in value
+export interface IIntrinsicRefFunction {
+    emitStore(builder: FunctionIRBuilder, invocation: Invocation): void
+    emitPtr(builder: FunctionIRBuilder, invocation: Invocation): void
+}
+
+export function isRefValue<T extends Value>(value: T): value is T & IRefValue {
+    return "emitStore" in value && (value as T & IRefValue).emitStore != null
+}
+
+export function isIntrinsicRefFunction<T extends SpecificFunction>(value: T): value is T & IntrinsicFunction & IIntrinsicRefFunction {
+    return "emitStore" in value && (value as T & IIntrinsicRefFunction).emitStore != null
 }
 
 export class Reference extends Type {
@@ -19,4 +32,8 @@ export class Reference extends Type {
     constructor(
         public readonly type: Type
     ) { super(Span.native, `${type.name}(&)`, type.size) }
+
+    public static dereference(type: Type) {
+        return type instanceof Reference ? type.type : type
+    }
 }

@@ -11,6 +11,7 @@ import { IntrinsicMaths } from "../language/typing/intrinsic/IntrinsicMaths"
 import { Primitives } from "../language/typing/Primitives"
 import { Void } from "../language/typing/types/base"
 import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
+import { Pointer } from "../language/typing/types/Pointer"
 import { Typing } from "../language/typing/Typing"
 import { stringifySpan } from "../language/util"
 import { BytecodeVM } from "../language/vm/BytecodeVM"
@@ -46,15 +47,20 @@ const ast = Parser.parse(new SourceFile("<anon>",
  
  function main() {
      return fibonacci(6)
- }
- ` */
-    `
+    }
     function print(msg: number): void => extern
     
+    ` */
+    /* javascript */`
+    
     function main() {
-        var i = 0;
-        (i + 1) = 2
+        var i = 5
+        foo(&i)
         return i
+    }
+    
+    function foo(target: *number) {
+        target.* = target.* + 1
     }
 
     `
@@ -84,7 +90,10 @@ if (ast instanceof Diagnostic) {
     globalScope.register("__operator__assign", new FunctionDefinition(Span.native, "__operator__assign")
         .addOverload(new IntrinsicMaths.Assignment())
     )
-    console.log(inspect(ast, undefined, Infinity, true))
+
+    globalScope.register("__operator__as_ptr", new FunctionDefinition(Span.native, "__operator__as_ptr").addOverload(Pointer.AS_POINTER_OPERATOR))
+    globalScope.register("__operator__addr", new FunctionDefinition(Span.native, "__operator__addr").addOverload(Pointer.ADDRESS_OF_OPERATOR))
+    globalScope.register("__operator__deref", new FunctionDefinition(Span.native, "__operator__deref").addOverload(Pointer.DEREF_OPERATOR))
 
     const program = Typing.parse(ast, globalScope)
     if (program instanceof Array) {
@@ -108,7 +117,7 @@ if (ast instanceof Diagnostic) {
             console.log(chalk.cyanBright("==>"), value)
         })
 
-        const result = vm.directCall(vm.findFunction("main(): void"), [new Float64Array([5, 25]).buffer], 8)
+        const result = vm.directCall(vm.findFunction("main(): number"), [new Float64Array([5, 25]).buffer], 8)
         console.log(result)
     }
 }

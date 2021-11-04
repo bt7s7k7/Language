@@ -23,6 +23,7 @@ import { ConstExpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
 import { ProgramFunction } from "./types/ProgramFunction"
+import { Reference } from "./types/Reference"
 import { Value } from "./Value"
 import { Block } from "./values/Block"
 import { ForLoop } from "./values/ForLoop"
@@ -112,6 +113,7 @@ export namespace Typing {
 
         function createConstant(constexpr: ConstExpr) {
             if (constexpr.type == Primitives.Number.TYPE) return new Primitives.Number.Constant(constexpr.span, constexpr.value, constexpr)
+            else if (constexpr.type == Type.TYPE) return constexpr.value as Type
             else throw unreachable()
         }
 
@@ -247,6 +249,7 @@ export namespace Typing {
             }
 
             self.body = body
+            self.result = Reference.dereference(self.result)
             self.regenerateName(definition.name)
 
             scope.register(name, definition)

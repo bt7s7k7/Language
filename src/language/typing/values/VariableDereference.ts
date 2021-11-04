@@ -1,11 +1,11 @@
 import { FunctionIRBuilder } from "../../emission/InstructionPrinter"
 import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
-import { IAssignable, Reference } from "../types/Reference"
+import { IRefValue, Reference } from "../types/Reference"
 import { Value } from "../Value"
 import { Variable } from "./Variable"
 
-export class VariableDereference extends Value implements IAssignable {
+export class VariableDereference extends Value implements IRefValue {
 
     public emit(builder: FunctionIRBuilder) {
         builder.pushInstruction(Instructions.LOAD, this.variable.type.size, [this.variable.name])
@@ -18,6 +18,10 @@ export class VariableDereference extends Value implements IAssignable {
         }
 
         builder.pushInstruction(Instructions.STORE, this.variable.type.size, [this.variable.name])
+    }
+
+    public emitPtr(builder: FunctionIRBuilder) {
+        builder.pushInstruction(Instructions.VAR_PTR, 0, [this.variable.name])
     }
 
     constructor(

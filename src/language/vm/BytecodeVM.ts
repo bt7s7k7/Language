@@ -1,8 +1,35 @@
 import { unreachable } from "../../comTypes/util"
+import { Pointer } from "../typing/types/Pointer"
 import { ExecutableHeader } from "./ExecutableHeader"
 import { Instructions } from "./Instructions"
 import { Memory, MemoryView } from "./Memory"
 import { AnyTypedArrayCtor } from "./types"
+
+namespace MemoryMap {
+    export const SEGMENT_SIZE = 3002399035752448
+
+    export const SEGMENTS = [
+        "data",
+        "variableStack"
+    ] as const
+
+    export function prefixAddress(address: number, segment: (typeof SEGMENTS)[number]) {
+        let i = 0
+        while (SEGMENTS[i] != segment) i++
+        return address + SEGMENT_SIZE * i
+    }
+
+    export function parseAddress(address: number) {
+        let i = 0
+        while (address >= SEGMENT_SIZE) {
+            i++
+            address -= SEGMENT_SIZE
+        }
+
+        return [address, SEGMENTS[i]] as const
+    }
+}
+
 
 interface ExecutionContext {
     function: ExecutableHeader.Function
@@ -35,7 +62,25 @@ export class BytecodeVM {
     }
 
     public findFunction(name: string) {
-        return this.config.functions.findIndex(v => v.name == name) ?? unreachable()
+        const index = this.config.functions.findIndex(v => v.name == name)
+        if (index == -1) throw new Error(`Cannot find function with signature "${name}"`)
+        return index
+    }
+
+    public storePointer(address: number, data: MemoryView) {
+        const [offset, type] = MemoryMap.parseAddress(address)
+
+        if (type == "variableStack") {
+            return this.variableStack.write(offset, data)
+        } else unreachable()
+    }
+
+    public loadPointer(address: number, size: number) {
+        const [offset, type] = MemoryMap.parseAddress(address)
+
+        if (type == "variableStack") {
+            return this.variableStack.read(offset, size)
+        } else unreachable()
     }
 
     public run(entryFunctionIndex: number) {
@@ -211,6 +256,26 @@ export class BytecodeVM {
                     console.log("Call:", funcNumber)
                     ctx = this.makeCall(funcNumber)
                     this.controlStack.push(ctx)
+                } break
+                case Instructions.VAR_PTR: {
+                    const ref = ctx.data[ctx.pc]
+                    ctx.pc++
+                    const offset = ctx.references[ref]
+                    const address = MemoryMap.prefixAddress(offset, "variableStack")
+                    console.log("Varptr:", offset, "->", address)
+                    this.stack.pushConst(new Float64Array([address]).buffer)
+                } break
+                case Instructions.STORE_PTR: {
+                    const ptr = this.stack.pop(Pointer.size).as(Float64Array)[0]
+                    const value = this.stack.pop(subtype)
+                    console.log("Ptr store:", ptr, "=", value)
+                    this.storePointer(ptr, value)
+                } break
+                case Instructions.LOAD_PTR: {
+                    const ptr = this.stack.pop(Pointer.size).as(Float64Array)[0]
+                    const value = this.loadPointer(ptr, subtype)
+                    console.log("Ptr store:", ptr, "=", value)
+                    this.stack.push(value)
                 } break
                 default: {
                     throw new Error("Invalid instruction")

@@ -3,6 +3,7 @@ import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
 import { IntrinsicFunction } from "../intrinsic/IntrinsicFunction"
 import { ProgramFunction } from "../types/ProgramFunction"
+import { IRefValue, isIntrinsicRefFunction } from "../types/Reference"
 import { SpecificFunction } from "../types/SpecificFunction"
 import { Value } from "../Value"
 
@@ -28,5 +29,18 @@ export class Invocation extends Value {
         span: Span,
         public readonly signature: SpecificFunction.Signature,
         public readonly args: Value[]
-    ) { super(span, signature.result) }
+    ) {
+        super(span, signature.result)
+        const target = signature.target
+        if (isIntrinsicRefFunction(target)) {
+            Object.assign(this, {
+                emitStore: function (builder) {
+                    target.emitStore(builder, this)
+                },
+                emitPtr: function (builder) {
+                    target.emitPtr(builder, this)
+                }
+            } as Partial<IRefValue> & ThisType<Invocation & IRefValue>)
+        }
+    }
 }

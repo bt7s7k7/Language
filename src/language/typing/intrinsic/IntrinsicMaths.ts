@@ -7,10 +7,9 @@ import { Instructions } from "../../vm/Instructions"
 import { Primitives } from "../Primitives"
 import { Type } from "../Type"
 import { Never } from "../types/base"
-import { isAssignable, Reference } from "../types/Reference"
+import { isRefValue, Reference } from "../types/Reference"
 import { SpecificFunction } from "../types/SpecificFunction"
 import { Invocation } from "../values/Invocation"
-import { VariableDereference } from "../values/VariableDereference"
 import { IntrinsicFunction } from "./IntrinsicFunction"
 
 abstract class Operation extends IntrinsicFunction {
@@ -90,7 +89,7 @@ export namespace IntrinsicMaths {
             const type = invocation.type
             const subtype = EmissionUtil.getTypeCode(type)
             const variable = invocation.args[0]
-            if (!isAssignable(variable)) throw new Error("Assignment target is not a variable")
+            if (!isRefValue(variable)) throw new Error(`Assignment target '${variable.constructor.name}' is not a ref value`)
 
             EmissionUtil.safeEmit(builder, type.size, invocation.args[1])
             variable.emitStore(builder)

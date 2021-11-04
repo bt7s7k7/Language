@@ -5,6 +5,10 @@ export namespace Instructions {
     export const CONST = 4
     export const DROP = 5
     export const CALL = 6
+    export const VAR_PTR = 7
+    export const DATA_PTR = 8
+    export const LOAD_PTR = 9
+    export const STORE_PTR = 10
     export const ADD = 101
     export const SUB = 102
     export const MUL = 103
@@ -15,9 +19,9 @@ export namespace Instructions {
     export const GT = 153
     export const LTE = 152
     export const GTE = 153
-    export const BR_TRUE = 10
-    export const BR_FALSE = 11
-    export const BR = 12
+    export const BR_TRUE = 50
+    export const BR_FALSE = 51
+    export const BR = 52
 
     export namespace Types {
         export const UINT32 = 5
