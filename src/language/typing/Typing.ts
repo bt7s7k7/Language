@@ -11,6 +11,7 @@ import { NumberLiteral } from "../ast/nodes/NumberLiteral"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
+import { StringLiteral } from "../ast/nodes/StringLiteral"
 import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
 import { WhileNode } from "../ast/nodes/WhileNode"
 import { Diagnostic } from "../Diagnostic"
@@ -22,8 +23,10 @@ import { Never } from "./types/base"
 import { ConstExpr, isConstexpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
+import { Pointer } from "./types/Pointer"
 import { ProgramFunction } from "./types/ProgramFunction"
 import { Reference } from "./types/Reference"
+import { Slice } from "./types/Slice"
 import { Value } from "./Value"
 import { Block } from "./values/Block"
 import { ForLoop } from "./values/ForLoop"
@@ -32,6 +35,7 @@ import { Invocation } from "./values/Invocation"
 import { MemberAccess } from "./values/MemberAccess"
 import { NOP } from "./values/NOP"
 import { Return } from "./values/Return"
+import { StringConstant } from "./values/StringConstant"
 import { Variable } from "./values/Variable"
 import { VariableDereference } from "./values/VariableDereference"
 import { WhileLoop } from "./values/WhileLoop"
@@ -160,8 +164,14 @@ export namespace Typing {
                 if (value instanceof Type) return value
                 if (!(value instanceof Variable)) throw new Error("Found value in scope but it's not a Variable, got " + value.constructor.name)
                 return new VariableDereference(node.span, value)
-            } else if (node instanceof NumberLiteral) {
-                return new Primitives.Number.Constant(node.span, node.value, new ConstExpr(node.span, Primitives.Number.TYPE, node.value))
+            } else if (node instanceof NumberLiteral || node instanceof StringLiteral) {
+                if (node.type == "string") {
+                    return new StringConstant(node.span, node.value, new ConstExpr(node.span, new Slice(Primitives.Char.TYPE), node.value))
+                } else {
+                    const type = node.type == "number" ? Primitives.Number : Primitives.Char
+                    const value = typeof node.value == "string" ? node.value.charCodeAt(0) : node.value
+                    return new type.Constant(node.span, value, new ConstExpr(node.span, type.TYPE, value))
+                }
             } else if (node instanceof ReturnStatementNode) {
                 const construct = scope.construct
                 if (!(construct instanceof FunctionConstruct)) throw new ParsingError(new Diagnostic("Return can only be used in a function definition", node.span))

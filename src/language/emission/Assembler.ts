@@ -11,12 +11,21 @@ export class Assembler {
     public length = 0
 
     protected readonly functionLookup = new Map<string, number>()
+    protected readonly dataLookup = new Map<string, number>()
 
     public addFunction(func: FunctionIR) {
         const index = this.header.functions.length
         this.functionLookup.set(func.name, index)
         const instructions: number[] = []
         const labels = new Map<string, ExecutableHeader.Label>()
+
+        for (const data of func.data.values()) {
+            const index = this.header.data.length
+            this.header.data.push({ name: data.name, offset: this.length, size: data.data.byteLength })
+            this.dataLookup.set(data.name, index)
+            this.length += data.data.byteLength
+            this.chunks.push(data.data)
+        }
 
         const header: ExecutableHeader.Function = {
             name: func.name,
@@ -27,6 +36,7 @@ export class Assembler {
             returns: [],
             variables: []
         }
+
 
         const variableIndexes = new Map<VariableIR, number>()
         for (const variable of func.variables.values()) {
@@ -78,7 +88,7 @@ export class Assembler {
                         const index = this.functionLookup.get(arg.substr(2)) ?? unreachable()
                         instructions.push(index)
                     } else {
-                        const index = variableIndexes.get(func.variables.get(arg)!) ?? unreachable()
+                        const index = variableIndexes.get(func.variables.get(arg)!) ?? this.dataLookup.get(arg) ?? unreachable()
                         instructions.push(index)
                     }
                 }

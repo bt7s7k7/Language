@@ -15,7 +15,7 @@ function createNumber(name: string, size: number, container: AnyTypedArrayCtor) 
     }
 
     const ALIGNED_SIZE = Math.ceil(size / 4) * 4
-    const ALIGNMENT_PADDING = ALIGNED_SIZE - size
+    const ALIGNMENT_PADDING = 0//ALIGNED_SIZE - size
     class Constant extends Value {
         public emit(builder: FunctionIRBuilder) {
             const temp = new Uint8Array(ALIGNED_SIZE)
@@ -89,4 +89,5 @@ function createNumber(name: string, size: number, container: AnyTypedArrayCtor) 
 
 export namespace Primitives {
     export const Number = createNumber("Number", 8, Float64Array)
+    export const Char = createNumber("Char", 1, Uint8Array)
 }

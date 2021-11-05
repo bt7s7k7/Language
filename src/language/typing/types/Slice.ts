@@ -18,7 +18,7 @@ import { SpecificFunction } from "./SpecificFunction"
 
 export class Slice extends InstanceType {
     public assignableTo(other: Type): boolean {
-        return super.assignableTo(other) || this.type.assignableTo(other) || (other instanceof Slice && this.type.assignableTo(other.type))
+        return super.assignableTo(other) || (other instanceof Slice && this.type.assignableTo(other.type))
     }
 
     public getProperty(key: string) {
@@ -87,6 +87,11 @@ export namespace Slice {
 
         constructor() { super(Span.native, "__slice_ctor") }
     })
+
+    export function emitConstant(builder: FunctionIRBuilder, ptr: number, size: number) {
+        return new Primitives.Number.Constant(Span.native, ptr).emit(builder)
+            + new Primitives.Number.Constant(Span.native, size).emit(builder)
+    }
 
     export const INDEX_OPERATOR = new class SliceIndexOperator extends IntrinsicFunction implements IIntrinsicRefFunction {
         public override match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {

@@ -80,6 +80,8 @@ export class BytecodeVM {
 
         if (type == "variableStack") {
             return this.variableStack.read(offset, size)
+        } else if (type == "data") {
+            return new MemoryView(this.data, offset, size)
         } else unreachable()
     }
 
@@ -263,6 +265,14 @@ export class BytecodeVM {
                     const offset = ctx.references[ref]
                     const address = MemoryMap.prefixAddress(offset, "variableStack")
                     console.log("Varptr:", offset, "->", address)
+                    this.stack.pushConst(new Float64Array([address]).buffer)
+                } break
+                case Instructions.DATA_PTR: {
+                    const ref = ctx.data[ctx.pc]
+                    ctx.pc++
+                    const offset = this.config.data[ref].offset
+                    const address = MemoryMap.prefixAddress(offset, "data")
+                    console.log("Dataptr:", offset, "->", address)
                     this.stack.pushConst(new Float64Array([address]).buffer)
                 } break
                 case Instructions.STORE_PTR: {

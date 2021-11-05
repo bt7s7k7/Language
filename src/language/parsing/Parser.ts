@@ -11,6 +11,7 @@ import { NumberLiteral } from "../ast/nodes/NumberLiteral"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
+import { StringLiteral } from "../ast/nodes/StringLiteral"
 import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
 import { WhileNode } from "../ast/nodes/WhileNode"
 import { Diagnostic } from "../Diagnostic"
@@ -218,7 +219,36 @@ export namespace Parser {
             return args
         }
 
-        function parseExpression() {
+        function parseStringLiteral(term: string, type: StringLiteral["type"]) {
+            const start = makePos()
+            const startIndex = index
+            const chars: string[] = []
+            while (!consume(term)) {
+                let curr = content[index]
+                next()
+
+                if (curr == "\\") {
+                    if (consume("n")) curr = "\n"
+                    else if (consume("r")) curr = "\r"
+                    else if (consume("\\")) curr = "\\"
+                    else if (consume("t")) curr = "\t"
+                    else if (consume("u")) {
+                        const hex = content.substr(index, 4)
+                        next(); next(); next(); next()
+                        const number = parseInt(hex, 16)
+                        curr = String.fromCharCode(number)
+                    }
+                }
+
+                chars.push(curr)
+            }
+
+            if (type == "char" && chars.length != 1) throw new ParsingFailure(`Character literal must contain exactly 1 character`)
+
+            return new StringLiteral(start.span(index - startIndex), chars.join(""), type)
+        }
+
+        function parseExpression(barrier: string | null = null) {
             skipWhitespace()
             const ret = new ExpressionNode(makePos().span(1))
             let hasTarget = false
@@ -226,7 +256,7 @@ export namespace Parser {
                 skipWhitespace()
 
                 const start = makePos()
-                if (!willEOF() && !matches("=>")) if (!hasTarget) {
+                if (!willEOF() && !matches("=>") && (barrier == null || !matches(barrier))) if (!hasTarget) {
                     if (consume("var")) {
                         skipWhitespace()
                         const name = consumeWord()
@@ -235,7 +265,7 @@ export namespace Parser {
                         let type: ExpressionNode | null = null
                         if (consume(":")) {
                             skipWhitespace()
-                            type = parseExpression()
+                            type = parseExpression("=")
                             skipWhitespace()
                         }
                         let body: ExpressionNode | null = null
@@ -333,9 +363,14 @@ export namespace Parser {
                             }
                         }
 
+                        let subtype: NumberLiteral["type"] = "number"
+
+                        if (consume("c")) subtype = "char"
+
                         ret.addChild(new NumberLiteral(start.span(src.length),
                             type == "dec" ? (isDecimal ? parseFloat(src) : parseInt(src))
-                                : parseInt(src, type == "hex" ? 16 : 2)
+                                : parseInt(src, type == "hex" ? 16 : 2),
+                            subtype
                         ))
                         hasTarget = true
                         continue
@@ -353,6 +388,18 @@ export namespace Parser {
                     if (consume("(")) {
                         ret.addChild(parseExpression())
                         if (!consume(")")) throw new ParsingFailure(`Expected ")"`)
+                        hasTarget = true
+                        continue
+                    }
+
+                    if (consume("'")) {
+                        ret.addChild(parseStringLiteral("'", "char"))
+                        hasTarget = true
+                        continue
+                    }
+
+                    if (consume("\"")) {
+                        ret.addChild(parseStringLiteral("\"", "string"))
                         hasTarget = true
                         continue
                     }

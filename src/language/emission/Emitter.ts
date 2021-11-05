@@ -28,7 +28,7 @@ export namespace Emitter {
             if (symbol instanceof FunctionDefinition) {
                 for (const overload of symbol.overloads) {
                     if (overload instanceof ProgramFunction) {
-                        const builder = new FunctionIRBuilder()
+                        const builder = new FunctionIRBuilder(overload.name)
 
                         for (const arg of overload.args) {
                             if (arg.type.size == Type.NOT_INSTANTIABLE) throw new EmittingError(new Diagnostic("Type is not instantiable", arg.span))
@@ -53,6 +53,7 @@ export namespace Emitter {
                             isExtern: overload.body == "extern",
                             instructions: builder.instructions,
                             variables: builder.variables,
+                            data: builder.data,
                             name: overload.name,
                             span: overload.span
                         })

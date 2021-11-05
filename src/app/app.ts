@@ -1,5 +1,5 @@
 import chalk = require("chalk")
-import { inspect } from "util"
+import { inspect, TextDecoder } from "util"
 import { Diagnostic } from "../language/Diagnostic"
 import { Assembler } from "../language/emission/Assembler"
 import { Emitter } from "../language/emission/Emitter"
@@ -33,6 +33,7 @@ Position.prototype._s = Position.prototype[inspect.custom] = function (this: Pos
 MemoryView.prototype[inspect.custom] = function (this: MemoryView) {
     let represent = ""
     if (this.length == 1) represent += ":uint8(" + this.as(Uint8Array)[0] + ")"
+    if (this.length == 1) represent += ":char(" + JSON.stringify(String.fromCharCode(this.as(Uint8Array)[0])).slice(1, -1) + ")"
     if (this.length == 2) represent += ":uint16(" + this.as(Uint16Array)[0] + ")"
     if (this.length == 4) represent += ":uint32(" + this.as(Uint32Array)[0] + ")"
     if (this.length == 8) represent += ":float64(" + this.as(Float64Array)[0] + ")"
@@ -50,15 +51,17 @@ const ast = Parser.parse(new SourceFile("<anon>",
      return fibonacci(6)
     }
     
+    function print(msg: *Number): Void => extern
     ` */
     /* javascript */`
     
+    
+    function print(msg: Char): Void => extern
+    function print(msg: []Char): Void => extern
     function print(msg: Number): Void => extern
-    function print(msg: *Number): Void => extern
-
     function main() {
-        var x = []Number(1, 2, 3, 4)
-        print(&x[0] == x.data)
+        var x = "Hello world!"
+        print(x)
     }
 
     `
@@ -68,6 +71,7 @@ if (ast instanceof Diagnostic) {
 } else {
     const globalScope = new Typing.Scope()
     globalScope.register("Number", Primitives.Number.TYPE)
+    globalScope.register("Char", Primitives.Char.TYPE)
     globalScope.register("Void", Void.TYPE)
 
     for (const operatorName of [
@@ -114,12 +118,18 @@ if (ast instanceof Diagnostic) {
 
         const vm = new BytecodeVM(build.header, build.data)
         const print: BytecodeVM.ExternFunction = (ctx, vm) => {
-            const value = vm.variableStack.read(ctx.references[0], 8)
+            const value = vm.variableStack.read(ctx.references[0], ctx.function.arguments[0].size)
             console.log(chalk.cyanBright("==>"), value)
         }
 
         vm.externFunctions.set("print(msg: Number): Void", print)
+        vm.externFunctions.set("print(msg: Char): Void", print)
         vm.externFunctions.set("print(msg: *Number): Void", print)
+        vm.externFunctions.set("print(msg: []Char): Void", (ctx, vm) => {
+            const [ptr, size] = vm.variableStack.read(ctx.references[0], ctx.function.arguments[0].size).as(Float64Array)
+            const msg = new TextDecoder().decode(vm.loadPointer(ptr, size).as(Uint8Array))
+            console.log(chalk.cyanBright("==>"), msg)
+        })
 
         const result = vm.directCall(vm.findFunction("main(): Void"), [new Float64Array([5, 25]).buffer], 8)
         console.log(result)

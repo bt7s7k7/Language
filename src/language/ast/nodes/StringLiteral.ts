@@ -1,10 +1,10 @@
 import { Span } from "../../Span"
 import { ASTNode } from "../ASTNode"
 
-export class NumberLiteral extends ASTNode {
+export class StringLiteral extends ASTNode {
     constructor(
         span: Span,
-        public readonly value: number,
-        public readonly type: "number" | "char"
+        public readonly value: string,
+        public readonly type: "char" | "string"
     ) { super(span) }
 }
