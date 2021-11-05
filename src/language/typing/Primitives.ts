@@ -1,5 +1,5 @@
 import { Diagnostic } from "../Diagnostic"
-import { FunctionIRBuilder } from "../emission/InstructionPrinter"
+import { FunctionIRBuilder } from "../emission/FunctionIRBuilder"
 import { Span } from "../Span"
 import { Instructions } from "../vm/Instructions"
 import { AnyTypedArrayCtor } from "../vm/types"

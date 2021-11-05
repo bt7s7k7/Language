@@ -10,7 +10,7 @@ import { Return } from "../typing/values/Return"
 import { Instructions } from "../vm/Instructions"
 import { EmissionUtil } from "./EmissionUtil"
 import { FunctionIR } from "./FunctionIR"
-import { FunctionIRBuilder } from "./InstructionPrinter"
+import { FunctionIRBuilder } from "./FunctionIRBuilder"
 
 class EmittingError extends Error {
     public name = "EmittingError"

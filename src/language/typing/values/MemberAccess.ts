@@ -1,5 +1,5 @@
 import { unreachable } from "../../../comTypes/util"
-import { FunctionIRBuilder } from "../../emission/InstructionPrinter"
+import { FunctionIRBuilder } from "../../emission/FunctionIRBuilder"
 import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
 import { Primitives } from "../Primitives"

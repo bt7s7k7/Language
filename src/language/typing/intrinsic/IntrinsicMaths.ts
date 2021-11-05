@@ -1,7 +1,7 @@
 import exp = require("constants")
 import { Diagnostic } from "../../Diagnostic"
 import { EmissionUtil } from "../../emission/EmissionUtil"
-import { FunctionIRBuilder } from "../../emission/InstructionPrinter"
+import { FunctionIRBuilder } from "../../emission/FunctionIRBuilder"
 import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
 import { Primitives } from "../Primitives"

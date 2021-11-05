@@ -3,7 +3,7 @@ import { Type } from "../typing/Type"
 import { Pointer } from "../typing/types/Pointer"
 import { Value } from "../typing/Value"
 import { Instructions } from "../vm/Instructions"
-import { FunctionIRBuilder } from "./InstructionPrinter"
+import { FunctionIRBuilder } from "./FunctionIRBuilder"
 
 const TYPE_LOOKUP = new Map<Type, number>([
     [Primitives.Number.TYPE, Instructions.Types.FLOAT64]

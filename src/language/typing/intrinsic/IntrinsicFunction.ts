@@ -1,4 +1,4 @@
-import { FunctionIRBuilder } from "../../emission/InstructionPrinter"
+import { FunctionIRBuilder } from "../../emission/FunctionIRBuilder"
 import { SpecificFunction } from "../types/SpecificFunction"
 import { Invocation } from "../values/Invocation"
 

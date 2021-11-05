@@ -1,4 +1,4 @@
-import { FunctionIRBuilder } from "../../emission/InstructionPrinter"
+import { FunctionIRBuilder } from "../../emission/FunctionIRBuilder"
 import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
 import { IntrinsicFunction } from "../intrinsic/IntrinsicFunction"
