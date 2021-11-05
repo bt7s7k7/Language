@@ -15,7 +15,7 @@ import { SpecificFunction } from "./SpecificFunction"
 
 export class Pointer extends InstanceType {
     public assignableTo(other: Type): boolean {
-        return super.assignableTo(other) || this.type.assignableTo(other) || (other instanceof Pointer && this.type.assignableTo(other.type))
+        return super.assignableTo(other) || (other instanceof Pointer && this.type.assignableTo(other.type))
     }
 
     constructor(

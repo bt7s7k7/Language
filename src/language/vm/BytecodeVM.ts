@@ -49,7 +49,7 @@ export class BytecodeVM {
     public readonly stack = new Memory()
     public readonly variableStack = new Memory()
     public readonly controlStack: ExecutionContext[] = []
-    public readonly externFunctions = new Map<string, (ctx: ExecutionContext, vm: BytecodeVM) => void>()
+    public readonly externFunctions = new Map<string, BytecodeVM.ExternFunction>()
 
     public directCall(functionIndex: number, args: ArrayBuffer[], returnSize: number) {
         for (const arg of args) {
@@ -352,4 +352,8 @@ export class BytecodeVM {
         public readonly config: ExecutableHeader,
         public readonly data: ArrayBuffer
     ) { }
+}
+
+export namespace BytecodeVM {
+    export type ExternFunction = (ctx: ExecutionContext, vm: BytecodeVM) => void
 }

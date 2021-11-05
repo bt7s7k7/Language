@@ -1,5 +1,6 @@
 import { Primitives } from "../typing/Primitives"
 import { Type } from "../typing/Type"
+import { Pointer } from "../typing/types/Pointer"
 import { Value } from "../typing/Value"
 import { Instructions } from "../vm/Instructions"
 import { FunctionIRBuilder } from "./InstructionPrinter"
@@ -15,6 +16,7 @@ export namespace EmissionUtil {
     }
 
     export function getTypeCode(type: Type) {
+        if (type instanceof Pointer) type = Primitives.Number.TYPE
         const ret = TYPE_LOOKUP.get(type)
         if (!ret) throw new Error("Cannot get code for type " + type.name)
         return ret

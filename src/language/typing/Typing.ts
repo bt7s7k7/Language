@@ -279,7 +279,6 @@ export namespace Typing {
             const self = new ProgramFunction(func.span, name, resultType ?? Never.TYPE, args, null!)
             const definition = new FunctionDefinition(func.span, name)
             definition.addOverload(self)
-
             innerScope.register(name, definition)
 
             const body = func.body == "extern" ? "extern" : parseExpressionNode(func.body, innerScope)
@@ -293,7 +292,11 @@ export namespace Typing {
             self.result = Reference.dereference(self.result)
             self.regenerateName(definition.name)
 
-            scope.register(name, definition)
+            if (scope.get(name) instanceof FunctionDefinition) {
+                (scope.get(name) as FunctionDefinition).addOverload(self)
+            } else {
+                scope.register(name, definition)
+            }
         }
 
         function parseRoot(root: RootNode, scope: Scope) {

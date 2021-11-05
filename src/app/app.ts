@@ -54,12 +54,11 @@ const ast = Parser.parse(new SourceFile("<anon>",
     /* javascript */`
     
     function print(msg: Number): Void => extern
+    function print(msg: *Number): Void => extern
 
     function main() {
         var x = []Number(1, 2, 3, 4)
-        for (var i = 0; i < x.length; i = i + 1) {
-            print(x[i])
-        }
+        print(&x[0] == x.data)
     }
 
     `
@@ -114,10 +113,13 @@ if (ast instanceof Diagnostic) {
         console.log(inspect(build, undefined, Infinity, true))
 
         const vm = new BytecodeVM(build.header, build.data)
-        vm.externFunctions.set("print(msg: Number): Void", (ctx, vm) => {
+        const print: BytecodeVM.ExternFunction = (ctx, vm) => {
             const value = vm.variableStack.read(ctx.references[0], 8)
             console.log(chalk.cyanBright("==>"), value)
-        })
+        }
+
+        vm.externFunctions.set("print(msg: Number): Void", print)
+        vm.externFunctions.set("print(msg: *Number): Void", print)
 
         const result = vm.directCall(vm.findFunction("main(): Void"), [new Float64Array([5, 25]).buffer], 8)
         console.log(result)
