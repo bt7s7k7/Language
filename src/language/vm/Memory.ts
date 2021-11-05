@@ -71,6 +71,13 @@ export class MemoryView {
         return new type(this.buffer, this.offset, this.length / type.BYTES_PER_ELEMENT)
     }
 
+    public slice(offset: number, size: number) {
+        if (offset >= this.length) throw new RangeError("Offset is outside the range of the MemoryView")
+        if ((offset + size) >= this.length) throw new RangeError("Ending is outside the range of the MemoryView")
+
+        return new MemoryView(this.buffer, this.offset + offset, size)
+    }
+
     protected array: Uint8Array | null = null
 
     constructor(

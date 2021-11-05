@@ -19,7 +19,7 @@ import { Primitives } from "./Primitives"
 import { Program } from "./Program"
 import { Type } from "./Type"
 import { Never } from "./types/base"
-import { ConstExpr } from "./types/ConstExpr"
+import { ConstExpr, isConstexpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
 import { ProgramFunction } from "./types/ProgramFunction"
@@ -29,6 +29,7 @@ import { Block } from "./values/Block"
 import { ForLoop } from "./values/ForLoop"
 import { IfStatement } from "./values/IfStatement"
 import { Invocation } from "./values/Invocation"
+import { MemberAccess } from "./values/MemberAccess"
 import { NOP } from "./values/NOP"
 import { Return } from "./values/Return"
 import { Variable } from "./values/Variable"
@@ -80,14 +81,6 @@ function assertValue(target: Value | Type, span: Span) {
     return target
 }
 
-function isConstexpr<T>(target: Type, type: Type) {
-    if (target instanceof ConstExpr && target.type.assignableTo(type)) {
-        return target.value as T
-    }
-
-    return null
-}
-
 export namespace Typing {
     export class Scope {
         public map = new Map<string, Value | Type>()
@@ -123,7 +116,39 @@ export namespace Typing {
             if (overload instanceof Array) throw new ParsingError(new Diagnostic(`Cannot find overload for function "${handler.name}"`, span), ...overload)
 
             return overload.result instanceof ConstExpr ? createConstant(overload.result)
-                : new Invocation(span, overload, operands.map(v => v instanceof Value ? v : unreachable()))
+                : new Invocation(span, overload, operands.map(v => v instanceof Value ? v : new NOP(v.span)))
+        }
+
+        function parseMemberAccess(node: OperatorNode, scope: Scope) {
+            let targetNode: ASTNode = node
+            const path: IdentifierNode[] = []
+
+            for (; targetNode instanceof OperatorNode && targetNode.name == "member";) {
+                const propertyNameNode = targetNode.children[1]
+                if (!(propertyNameNode instanceof IdentifierNode)) throw new ParsingError(new Diagnostic("Expected identifier", propertyNameNode.span))
+
+                path.unshift(propertyNameNode)
+                targetNode = targetNode.children[0]
+            }
+
+            const target = parseExpressionNode(targetNode, scope)
+
+            const steps: MemberAccess.Property[] = []
+            for (let { name, span } of path) {
+                const type = steps[steps.length - 1]?.type ?? (target instanceof Value ? target.type : (name = "static " + name, target))
+                const property = type.getProperty(name)
+
+                if (!property) throw new ParsingError(new Diagnostic(`Type "${type.name}" does not have property "${name}"`, span))
+
+                if (property instanceof FunctionDefinition) return property
+                if (property instanceof ConstExpr) throw unreachable()
+
+                const step = property
+                steps.push(step)
+            }
+
+            return new MemberAccess(node.span, assertValue(target, target.span), steps)
+
         }
 
         function parseExpressionNode(node: ASTNode, scope: Scope, root = false): Value | Type {
@@ -148,6 +173,10 @@ export namespace Typing {
             } else if (node instanceof BlockNode) {
                 return new Block(node.span, node.children.map(v => assertValue(parseExpressionNode(v, scope, true), v.span)))
             } else if (node instanceof OperatorNode) {
+                if (node.name == "member") {
+                    return parseMemberAccess(node, scope)
+                }
+
                 const operator = node.name
                 const handler = globalScope.get("__operator__" + operator)
                 if (!(handler instanceof FunctionDefinition)) throw new ParsingError(new Diagnostic(`Cannot find operator "${operator}"`, node.span))
@@ -162,9 +191,8 @@ export namespace Typing {
                     if (bodyElse && !bodyElse.type.assignableTo(body.type)) throw new ParsingError(notAssignable(bodyElse.type, body.type, node.span))
                 }
 
-                const constPredicate = isConstexpr<number>(predicate.type, Primitives.Number.TYPE)
-                if (constPredicate != null) {
-                    if (constPredicate) {
+                if (isConstexpr<number>(predicate.type, Primitives.Number.TYPE)) {
+                    if (predicate.type.value) {
                         return body
                     } else {
                         if (bodyElse) return bodyElse
@@ -206,10 +234,23 @@ export namespace Typing {
                 const handler = (scope.get("__operator__assign") ?? unreachable()) as FunctionDefinition
                 return createInvocation(node.span, handler, [new VariableDereference(node.span, variable, !!"is declaration"), body])
             } else if (node instanceof InvocationNode) {
-                const handler = parseExpressionNode(node.target, scope)
-                if (!(handler instanceof FunctionDefinition)) throw new ParsingError(new Diagnostic(`Target is not callable`, node.span))
+                const target = parseExpressionNode(node.target, scope)
                 const operands = node.args.map(v => parseExpressionNode(v, scope))
-                return createInvocation(node.span, handler, operands)
+                const func = ((): FunctionDefinition => {
+                    if (target instanceof FunctionDefinition) return target
+                    if (target instanceof Type) {
+                        const invokeFunction = target.getProperty("static !invoke")
+                        if (!(invokeFunction instanceof FunctionDefinition)) unreachable()
+                        if (invokeFunction) {
+                            operands.unshift(target)
+                            return invokeFunction
+                        }
+                    }
+
+                    throw new ParsingError(new Diagnostic(`Target is not callable`, node.span))
+                })()
+
+                return createInvocation(node.span, func, operands)
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 

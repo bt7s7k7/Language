@@ -39,6 +39,8 @@ declare module "../ast/nodes/OperatorNode" {
 
 const OPERATORS: OperatorDefinition[] = [
     { name: "deref", text: ".*", type: "suffix", presentence: 0 },
+    { name: "as_slice", text: "[]", type: "prefix", presentence: 0 },
+    { name: "member", text: ".", type: "binary", presentence: 0 },
     { name: "addr", text: "&", type: "prefix", presentence: 1 },
     { name: "as_ptr", text: "*", type: "prefix", presentence: 1 },
     { name: "negate", text: "-", type: "prefix", presentence: 1 },
@@ -57,6 +59,8 @@ const OPERATORS: OperatorDefinition[] = [
 ]
 
 const MAX_PRESENTENCE = 7
+
+const INDEX_OPERATOR: OperatorDefinition = { name: "index", presentence: 0, text: "[", type: "suffix" }
 
 export namespace Parser {
     export function parse(file: SourceFile) {
@@ -171,12 +175,15 @@ export namespace Parser {
                             child.addChild(rightOperand)
                         } else if (child.meta.type == "prefix") {
                             if (ii == expression.children.length - 1) throw unreachable()
-                            const operand = expression.children.splice(ii + 1, 1)[0]
+                            const operand = expression.children[ii + 1]
+                            if (operand instanceof OperatorNode && operand.meta) continue
+                            expression.children.splice(ii + 1, 1)
                             child.addChild(operand)
+                            ii -= 2
                         } else if (child.meta.type == "suffix") {
                             if (ii == 0) throw unreachable()
                             const operand = expression.children.splice(ii - 1, 1)[0]
-                            child.addChild(operand)
+                            child.children.unshift(operand)
                             ii--
                         }
 
@@ -192,6 +199,23 @@ export namespace Parser {
             }
 
             if (expression.children.length > 1) throw unreachable()
+        }
+
+        function parseArguments(term: string) {
+            const args: ExpressionNode[] = []
+            skipWhitespace()
+            if (!consume(term)) for (; ;) {
+                skipWhitespace()
+
+                args.push(parseExpression())
+
+                skipWhitespace()
+
+                if (consume(term)) break
+                if (!consume(",")) throw new ParsingFailure(`Expected expression or "," or "${term}"`)
+            }
+
+            return args
         }
 
         function parseExpression() {
@@ -344,21 +368,21 @@ export namespace Parser {
                     }
 
                     if (consume("(")) {
-                        const args: ExpressionNode[] = []
                         const start = makePos()
-                        skipWhitespace()
-                        if (!consume(")")) for (; ;) {
-                            skipWhitespace()
-
-                            args.push(parseExpression())
-
-                            skipWhitespace()
-
-                            if (consume(")")) break
-                            if (!consume(",")) throw new ParsingFailure(`Expected expression or "," or ")"`)
-                        }
+                        const args = parseArguments(")")
 
                         ret.addChild(new InvocationNode(start.span(1), args))
+                        continue
+                    }
+
+                    if (consume("[")) {
+                        const start = makePos()
+                        const args = parseArguments("]")
+
+                        const operator = ret.addChild(new OperatorNode(start.span(1), INDEX_OPERATOR.name))
+                        operator.addChildren(args)
+                        operator.meta = INDEX_OPERATOR
+
                         continue
                     }
                 }

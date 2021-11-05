@@ -274,8 +274,17 @@ export class BytecodeVM {
                 case Instructions.LOAD_PTR: {
                     const ptr = this.stack.pop(Pointer.size).as(Float64Array)[0]
                     const value = this.loadPointer(ptr, subtype)
-                    console.log("Ptr store:", ptr, "=", value)
+                    console.log("Ptr load:", ptr, "=", value)
                     this.stack.push(value)
+                } break
+                case Instructions.MEMBER: {
+                    const offset = ctx.data[ctx.pc]
+                    ctx.pc++
+                    const size = ctx.data[ctx.pc]
+                    ctx.pc++
+                    const value = this.stack.pop(subtype)
+                    const result = value.slice(offset, size)
+                    this.stack.push(result)
                 } break
                 default: {
                     throw new Error("Invalid instruction")

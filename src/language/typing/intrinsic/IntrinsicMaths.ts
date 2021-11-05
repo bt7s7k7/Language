@@ -87,7 +87,6 @@ export namespace IntrinsicMaths {
     export class Assignment extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
             const type = invocation.type
-            const subtype = EmissionUtil.getTypeCode(type)
             const variable = invocation.args[0]
             if (!isRefValue(variable)) throw new Error(`Assignment target '${variable.constructor.name}' is not a ref value`)
 

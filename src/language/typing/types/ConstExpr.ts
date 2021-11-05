@@ -2,14 +2,18 @@ import { Span } from "../../Span"
 import { stringifyValue } from "../../util"
 import { Type } from "../Type"
 
-export class ConstExpr extends Type {
-    public assignableTo(other: Type) {
-        return super.assignableTo(other) || this.type.assignableTo(other)
+export function isConstexpr<T>(target: unknown, type: Type): target is ConstExpr<T> {
+    return target instanceof ConstExpr && target.type.assignableTo(type)
+}
+
+export class ConstExpr<T = any> extends Type {
+    public assignableTo(other: Type): boolean {
+        return super.assignableTo(other) || this.type.assignableTo(other) || (other instanceof ConstExpr && this.type.assignableTo(other.type) && this.value == other.value)
     }
 
     constructor(
         span: Span,
         public readonly type: Type,
-        public readonly value: any
-    ) { super(span, `<${type.name}> ${stringifyValue(value)}`, type.size) }
+        public readonly value: T
+    ) { super(span, `<${type.name}> ${value instanceof Type ? value.name : stringifyValue(value)}`, type.size) }
 }

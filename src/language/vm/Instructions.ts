@@ -9,6 +9,7 @@ export namespace Instructions {
     export const DATA_PTR = 8
     export const LOAD_PTR = 9
     export const STORE_PTR = 10
+    export const MEMBER = 11
     export const ADD = 101
     export const SUB = 102
     export const MUL = 103

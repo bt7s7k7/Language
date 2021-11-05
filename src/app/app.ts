@@ -12,6 +12,7 @@ import { Primitives } from "../language/typing/Primitives"
 import { Void } from "../language/typing/types/base"
 import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
 import { Pointer } from "../language/typing/types/Pointer"
+import { Slice } from "../language/typing/types/Slice"
 import { Typing } from "../language/typing/Typing"
 import { stringifySpan } from "../language/util"
 import { BytecodeVM } from "../language/vm/BytecodeVM"
@@ -48,13 +49,17 @@ const ast = Parser.parse(new SourceFile("<anon>",
  function main() {
      return fibonacci(6)
     }
-    function print(msg: number): void => extern
     
     ` */
     /* javascript */`
     
+    function print(msg: Number): Void => extern
+
     function main() {
-        target.*(5)
+        var x = []Number(1, 2, 3, 4)
+        for (var i = 0; i < x.length; i = i + 1) {
+            print(x[i])
+        }
     }
 
     `
@@ -89,6 +94,9 @@ if (ast instanceof Diagnostic) {
     globalScope.register("__operator__addr", new FunctionDefinition(Span.native, "__operator__addr").addOverload(Pointer.ADDRESS_OF_OPERATOR))
     globalScope.register("__operator__deref", new FunctionDefinition(Span.native, "__operator__deref").addOverload(Pointer.DEREF_OPERATOR))
 
+    globalScope.register("__operator__as_slice", new FunctionDefinition(Span.native, "__operator__as_slice").addOverload(Slice.AS_SLICE_OPERATOR))
+    globalScope.register("__operator__index", new FunctionDefinition(Span.native, "__operator__index").addOverload(Slice.INDEX_OPERATOR))
+
     const program = Typing.parse(ast, globalScope)
     if (program instanceof Array) {
         console.log(inspect(ast, undefined, Infinity, true))
@@ -106,12 +114,12 @@ if (ast instanceof Diagnostic) {
         console.log(inspect(build, undefined, Infinity, true))
 
         const vm = new BytecodeVM(build.header, build.data)
-        vm.externFunctions.set("print(msg: number): void", (ctx, vm) => {
+        vm.externFunctions.set("print(msg: Number): Void", (ctx, vm) => {
             const value = vm.variableStack.read(ctx.references[0], 8)
             console.log(chalk.cyanBright("==>"), value)
         })
 
-        const result = vm.directCall(vm.findFunction("main(): Number"), [new Float64Array([5, 25]).buffer], 8)
+        const result = vm.directCall(vm.findFunction("main(): Void"), [new Float64Array([5, 25]).buffer], 8)
         console.log(result)
     }
 }
