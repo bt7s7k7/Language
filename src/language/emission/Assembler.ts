@@ -70,7 +70,7 @@ export class Assembler {
             }
         }
 
-        for (const entry of func.instructions) {
+        if (!func.isExtern) for (const entry of func.instructions) {
             if ("label" in entry) continue
 
             instructions.push((entry.code << 16) | entry.subtype)
