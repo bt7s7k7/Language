@@ -7,15 +7,19 @@ import { Instructions } from "../../vm/Instructions"
 import { Primitives } from "../Primitives"
 import { Type } from "../Type"
 import { Never } from "../types/base"
+import { ConstExpr } from "../types/ConstExpr"
 import { isRefValue, Reference } from "../types/Reference"
 import { SpecificFunction } from "../types/SpecificFunction"
 import { Invocation } from "../values/Invocation"
 import { IntrinsicFunction } from "./IntrinsicFunction"
 
+function normalizeType(type: Type) {
+    return ConstExpr.removeConstexpr(Reference.dereference(type))
+}
+
 abstract class Operation extends IntrinsicFunction {
     public match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
-        let type = args[0] ?? Never.TYPE
-        if (type instanceof Reference) type = type.type
+        let type = normalizeType(args[0] ?? Never.TYPE)
         const target = Array.from({ length: this.arity }, (_, i): SpecificFunction.Argument => ({ name: "ab"[i], type }))
         if (this.requireTargetReference) target[0].type = new Reference(target[0].type)
         const error = SpecificFunction.testArguments(span, target, args, argSpans)
@@ -39,7 +43,7 @@ abstract class Operation extends IntrinsicFunction {
 export namespace IntrinsicMaths {
     class BinaryOperation extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
-            const type = invocation.type
+            const type = normalizeType(invocation.type)
             const subtype = EmissionUtil.getTypeCode(type)
 
             EmissionUtil.safeEmit(builder, type.size, invocation.args[0])
@@ -68,7 +72,7 @@ export namespace IntrinsicMaths {
     export const GTE = new BinaryOperation("__operator_gt", Instructions.GTE)
     export const NEGATE = new class extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
-            const type = invocation.type
+            const type = normalizeType(invocation.type)
             const subtype = EmissionUtil.getTypeCode(type)
             const constant = (type as any)["CONSTANT"] as null | (typeof Primitives.Number.Constant)
             if (!constant) throw new Error("Cannot create constant for type " + type.name)
@@ -84,9 +88,36 @@ export namespace IntrinsicMaths {
         constructor() { super("__operator__negate", 1) }
     }
 
+    class ShortCircuitOperation extends Operation {
+        public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
+            const type = normalizeType(invocation.type)
+            const subtype = EmissionUtil.getTypeCode(type)
+            const constant = (type as any)["CONSTANT"] as null | (typeof Primitives.Number.Constant)
+            if (!constant) throw new Error("Cannot create constant for type " + type.name)
+
+            const endLabel = "sh_" + builder.nextID() + "_end"
+            const otherLabel = "sh_" + builder.nextID() + "_other"
+
+            EmissionUtil.safeEmit(builder, type.size, invocation.args[0])
+            builder.pushInstruction(this.invert ? Instructions.BR_FALSE : Instructions.BR_TRUE, subtype, ["l:" + otherLabel])
+            EmissionUtil.safeEmit(builder, type.size, new constant(Span.native, this.invert ? 1 : 0))
+            builder.pushInstruction(Instructions.BR, 0, ["l:" + endLabel])
+            builder.pushLabel(otherLabel)
+            EmissionUtil.safeEmit(builder, type.size, invocation.args[1])
+            builder.pushLabel(endLabel)
+
+            return type.size
+        }
+
+        constructor(name: string, public readonly invert: boolean) { super(name, 2) }
+    }
+
+    export const AND = new ShortCircuitOperation("__operator_and", false)
+    export const OR = new ShortCircuitOperation("__operator_or", true)
+
     export class Assignment extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
-            const type = invocation.type
+            const type = normalizeType(invocation.type)
             const variable = invocation.args[0]
             if (!isRefValue(variable)) throw new Error(`Assignment target '${variable.constructor.name}' is not a ref value`)
 

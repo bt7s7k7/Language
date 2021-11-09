@@ -23,7 +23,6 @@ import { Never } from "./types/base"
 import { ConstExpr, isConstexpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
-import { Pointer } from "./types/Pointer"
 import { ProgramFunction } from "./types/ProgramFunction"
 import { Reference } from "./types/Reference"
 import { Slice } from "./types/Slice"
@@ -299,7 +298,7 @@ export namespace Typing {
             }
 
             self.body = body
-            self.result = Reference.dereference(self.result)
+            self.result = ConstExpr.removeConstexpr(Reference.dereference(self.result))
             self.regenerateName(definition.name)
 
             if (scope.get(name) instanceof FunctionDefinition) {

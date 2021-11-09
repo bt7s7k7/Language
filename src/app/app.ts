@@ -77,14 +77,16 @@ if (ast instanceof Diagnostic) {
     for (const operatorName of [
         "ADD", "SUB", "MUL", "DIV",
         "MOD", "EQ", "LT", "GT", "LTE",
-        "GTE", "NEGATE"
+        "GTE", "NEGATE", "AND", "OR"
     ]) {
         const funcName = `__operator__${operatorName.toLowerCase()}`
         const definition = new FunctionDefinition(Span.native, funcName)
 
-        definition.addOverload((IntrinsicMaths as any)[operatorName])
-        for (const primitiveName of ["Number"]) {
-            definition.addOverload((Primitives as any)[primitiveName][`CONST_${operatorName}`])
+        const intrinsic = (IntrinsicMaths as any)[operatorName]
+        if (intrinsic) definition.addOverload(intrinsic)
+        for (const primitiveName of ["Number", "Char"]) {
+            const constexprFunction = (Primitives as any)[primitiveName][`CONST_${operatorName}`]
+            if (constexprFunction) definition.addOverload(constexprFunction)
         }
         globalScope.register(funcName, definition)
     }

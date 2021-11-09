@@ -16,4 +16,8 @@ export class ConstExpr<T = any> extends Type {
         public readonly type: Type,
         public readonly value: T
     ) { super(span, `<${type.name}> ${value instanceof Type ? value.name : stringifyValue(value)}`, type.size) }
+
+    public static removeConstexpr(type: Type) {
+        return type instanceof ConstExpr ? type.type : type
+    }
 }

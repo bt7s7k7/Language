@@ -56,6 +56,7 @@ const OPERATORS: OperatorDefinition[] = [
     { name: "gt", text: ">", type: "binary", presentence: 4 },
     { name: "lt", text: "<", type: "binary", presentence: 4 },
     { name: "or", text: "||", type: "binary", presentence: 5 },
+    { name: "and", text: "&&", type: "binary", presentence: 5 },
     { name: "assign", text: "=", type: "binary", presentence: 6 },
 ]
 
