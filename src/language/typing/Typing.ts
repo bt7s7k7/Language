@@ -238,10 +238,10 @@ export namespace Typing {
 
                 const variable = new Variable(node.span, type, name)
                 scope.register(name, variable)
-                if (!body) return new NOP(node.span)
+                if (!body) return new VariableDereference(node.span, variable, "declaration")
 
                 const handler = (scope.get("__operator__assign") ?? unreachable()) as FunctionDefinition
-                return createInvocation(node.span, handler, [new VariableDereference(node.span, variable, !!"is declaration"), body])
+                return createInvocation(node.span, handler, [new VariableDereference(node.span, variable, "construction"), body])
             } else if (node instanceof InvocationNode) {
                 const target = parseExpressionNode(node.target, scope)
                 const operands = node.args.map(v => parseExpressionNode(v, scope))

@@ -54,14 +54,18 @@ const ast = Parser.parse(new SourceFile("<anon>",
     function print(msg: *Number): Void => extern
     ` */
     /* javascript */`
-    
-    
+
     function print(msg: Char): Void => extern
     function print(msg: []Char): Void => extern
     function print(msg: Number): Void => extern
     function main() {
-        var x = "Hello world!"
-        print(x)
+        var x = "Hello world"
+        var y: []Char
+
+        y.data = x.data
+        y.length = x.length
+
+        print(y)
     }
 
     `

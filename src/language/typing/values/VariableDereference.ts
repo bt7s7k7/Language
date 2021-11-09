@@ -6,18 +6,23 @@ import { Value } from "../Value"
 import { Variable } from "./Variable"
 
 export class VariableDereference extends Value implements IRefValue {
-
     public emit(builder: FunctionIRBuilder) {
+        if (this.accessType == "declaration") {
+            builder.registerVariable("variables", this.span, this.variable.name, this.variable.type.size)
+            return 0
+        }
         builder.pushInstruction(Instructions.LOAD, this.variable.type.size, [this.variable.name])
         return this.variable.type.size
     }
 
     public emitStore(builder: FunctionIRBuilder) {
-        if (this.isDeclaration) {
+        if (this.accessType == "construction" || this.accessType == "declaration") {
             builder.registerVariable("variables", this.span, this.variable.name, this.variable.type.size)
         }
 
-        builder.pushInstruction(Instructions.STORE, this.variable.type.size, [this.variable.name])
+        if (this.accessType == "construction" || this.accessType == "dereference") {
+            builder.pushInstruction(Instructions.STORE, this.variable.type.size, [this.variable.name])
+        }
     }
 
     public emitPtr(builder: FunctionIRBuilder) {
@@ -27,6 +32,6 @@ export class VariableDereference extends Value implements IRefValue {
     constructor(
         span: Span,
         public readonly variable: Variable,
-        public readonly isDeclaration: boolean = false
+        public readonly accessType: "declaration" | "construction" | "dereference" = "dereference"
     ) { super(span, new Reference(variable.type)) }
 }
