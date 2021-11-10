@@ -50,8 +50,8 @@ export class Slice extends InstanceType {
 
 export namespace Slice {
     export const AS_SLICE_OPERATOR = new class extends SpecificFunction {
-        public override match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
-            const result = SpecificFunction.testConstExpr<[Type]>(span, [Type.TYPE], args, argSpans)
+        public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+            const result = SpecificFunction.testConstExpr<[Type]>(span, [Type.TYPE], args)
             if (!(result instanceof Array)) return result
             const type = result[0]
 
@@ -66,10 +66,10 @@ export namespace Slice {
     }
 
     export class SliceCtor extends IntrinsicFunction {
-        public override match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
+        public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
             const base = this.sliceType.type
             const target = args.map((_, i) => ({ name: `elem_${i}`, type: base }))
-            const error = SpecificFunction.testArguments(span, target, args, argSpans)
+            const error = SpecificFunction.testArguments(span, target, args)
             if (error) return error
 
             return {
@@ -98,14 +98,14 @@ export namespace Slice {
     }
 
     export class SliceCreate extends IntrinsicFunction {
-        public override match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
+        public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
             const base = this.sliceType.type
-            const result = SpecificFunction.testConstExpr<[number]>(span, [Primitives.Number.TYPE], args, argSpans)
+            const result = SpecificFunction.testConstExpr<[number]>(span, [Primitives.Number.TYPE], args)
             if (!(result instanceof Array)) return result
 
             return {
                 target: this,
-                arguments: [{ name: "length", type: args[0] }],
+                arguments: [{ name: "length", type: args[0].type }],
                 result: new Slice(base)
             }
         }
@@ -130,11 +130,11 @@ export namespace Slice {
     }
 
     export const INDEX_OPERATOR = new class SliceIndexOperator extends IntrinsicFunction implements IIntrinsicRefFunction {
-        public override match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
-            const type = Reference.dereference(args[0])
+        public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+            const type = Reference.dereference(args[0].type)
             const slice = type instanceof Slice ? type : Never.TYPE
             const target = [{ name: "slice", type: slice }, { name: "index", type: Primitives.Number.TYPE }]
-            const error = SpecificFunction.testArguments(span, target, args, argSpans)
+            const error = SpecificFunction.testArguments(span, target, args)
             if (error) return error
 
             return {

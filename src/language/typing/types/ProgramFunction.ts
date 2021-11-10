@@ -4,8 +4,8 @@ import { Value } from "../Value"
 import { SpecificFunction } from "./SpecificFunction"
 
 export class ProgramFunction extends SpecificFunction {
-    public match(span: Span, args: Type[], argSpans: Span[]) {
-        const error = SpecificFunction.testArguments(span, this.args, args, argSpans)
+    public match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context) {
+        const error = SpecificFunction.testArguments(span, this.args, args)
         if (error) return error
 
         return {

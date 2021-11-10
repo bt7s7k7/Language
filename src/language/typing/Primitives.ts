@@ -3,7 +3,6 @@ import { FunctionIRBuilder } from "../emission/FunctionIRBuilder"
 import { Span } from "../Span"
 import { Instructions } from "../vm/Instructions"
 import { AnyTypedArrayCtor } from "../vm/types"
-import { Type } from "./Type"
 import { ConstExpr } from "./types/ConstExpr"
 import { InstanceType } from "./types/InstanceType"
 import { SpecificFunction } from "./types/SpecificFunction"
@@ -35,15 +34,15 @@ function createNumber(name: string, size: number, container: AnyTypedArrayCtor) 
     Object.assign(TYPE, { "CONSTANT": Constant })
 
     class ConstBinaryOperation extends SpecificFunction {
-        public match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
-            const types = SpecificFunction.testConstExpr<[number, number]>(span, [TYPE, TYPE], args, argSpans)
+        public match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+            const types = SpecificFunction.testConstExpr<[number, number]>(span, [TYPE, TYPE], args)
             if (types instanceof Diagnostic) return types
 
             const result = this.operation(types[0], types[1])
 
             return {
                 target: this,
-                arguments: args.map((v, i) => ({ name: "ab"[i], type: v })),
+                arguments: args.map((v, i) => ({ name: "ab"[i], type: v.type })),
                 result: new ConstExpr(span, TYPE, result)
             }
         }
@@ -68,15 +67,15 @@ function createNumber(name: string, size: number, container: AnyTypedArrayCtor) 
         CONST_LTE: new ConstBinaryOperation("__operator_lte", (a, b) => +(a <= b)),
         CONST_GTE: new ConstBinaryOperation("__operator_gte", (a, b) => +(a >= b)),
         CONST_NEGATE: new class extends SpecificFunction {
-            public match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
-                const types = SpecificFunction.testConstExpr<[number]>(span, [TYPE], args, argSpans)
+            public match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+                const types = SpecificFunction.testConstExpr<[number]>(span, [TYPE], args)
                 if (types instanceof Diagnostic) return types
 
                 const result = -types[0]
 
                 return {
                     target: this,
-                    arguments: args.map((v, i) => ({ name: "a"[i], type: v })),
+                    arguments: args.map((v, i) => ({ name: "a"[i], type: v.type })),
                     result: new ConstExpr(span, TYPE, result)
                 }
             }

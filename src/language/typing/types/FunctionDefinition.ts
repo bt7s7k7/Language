@@ -6,10 +6,10 @@ import { SpecificFunction } from "./SpecificFunction"
 export class FunctionDefinition extends Type {
     public canInstance() { return false }
     public getName() { return this.name }
-    public findOverload(span: Span, args: Type[], argSpans: Span[]) {
+    public findOverload(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context) {
         let diagnostics = []
         for (const overload of this.overloads) {
-            const match = overload.match(span, args, argSpans)
+            const match = overload.match(span, args, context)
             if (match instanceof Diagnostic) {
                 diagnostics.push(match)
             } else {

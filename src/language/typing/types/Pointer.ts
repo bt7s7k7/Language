@@ -25,8 +25,8 @@ export class Pointer extends InstanceType {
 
 export namespace Pointer {
     export const AS_POINTER_OPERATOR = new class extends SpecificFunction {
-        public override match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
-            const result = SpecificFunction.testConstExpr<[Type]>(span, [Type.TYPE], args, argSpans)
+        public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+            const result = SpecificFunction.testConstExpr<[Type]>(span, [Type.TYPE], args)
             if (!(result instanceof Array)) return result
             const type = result[0]
 
@@ -41,10 +41,10 @@ export namespace Pointer {
     }
 
     export const ADDRESS_OF_OPERATOR = new class extends IntrinsicFunction {
-        public override match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
-            const type = args[0] ? Reference.dereference(args[0]) : Never.TYPE
+        public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+            const type = args[0] ? Reference.dereference(args[0].type) : Never.TYPE
             const target = [{ name: "value", type: new Reference(type) }]
-            const error = SpecificFunction.testArguments(span, target, args, argSpans)
+            const error = SpecificFunction.testArguments(span, target, args)
             if (error) return error
 
             return {
@@ -65,11 +65,11 @@ export namespace Pointer {
     }
 
     export const DEREF_OPERATOR = new class extends IntrinsicFunction implements IIntrinsicRefFunction {
-        public override match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
-            const type = args[0] ? Reference.dereference(args[0]) : Never.TYPE
+        public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+            const type = args[0] ? Reference.dereference(args[0].type) : Never.TYPE
             const base = type instanceof Pointer ? type.type : Never.TYPE
             const target = [{ name: "pointer", type: new Pointer(base) }]
-            const error = SpecificFunction.testArguments(span, target, args, argSpans)
+            const error = SpecificFunction.testArguments(span, target, args)
             if (error) return error
 
             return {

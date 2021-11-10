@@ -18,11 +18,11 @@ function normalizeType(type: Type) {
 }
 
 abstract class Operation extends IntrinsicFunction {
-    public match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
-        let type = normalizeType(args[0] ?? Never.TYPE)
+    public match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+        let type = normalizeType(args[0].type ?? Never.TYPE)
         const target = Array.from({ length: this.arity }, (_, i): SpecificFunction.Argument => ({ name: "ab"[i], type }))
         if (this.requireTargetReference) target[0].type = new Reference(target[0].type)
-        const error = SpecificFunction.testArguments(span, target, args, argSpans)
+        const error = SpecificFunction.testArguments(span, target, args)
         if (error) return error
 
         return {

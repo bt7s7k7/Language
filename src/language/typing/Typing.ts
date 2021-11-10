@@ -113,9 +113,9 @@ export namespace Typing {
             else throw unreachable()
         }
 
-        function createInvocation(span: Span, handler: FunctionDefinition, operands: (Value | Type)[]) {
-            const args = operands.map(v => v instanceof Value ? v.type : new ConstExpr(v.span, Type.TYPE, v))
-            const overload = handler.findOverload(span, args, args.map(v => v.span))
+        function createInvocation(span: Span, handler: FunctionDefinition, operands: (Value | Type)[], scope: Scope) {
+            const args = operands.map(v => ({ span: v.span, type: v instanceof Value ? v.type : new ConstExpr(v.span, Type.TYPE, v) }))
+            const overload = handler.findOverload(span, args, { scope, rootScope })
             if (overload instanceof Array) throw new ParsingError(new Diagnostic(`Cannot find overload for function "${handler.name}"`, span), ...overload)
 
             return overload.result instanceof ConstExpr ? createConstant(overload.result)
@@ -195,7 +195,7 @@ export namespace Typing {
                 const handler = globalScope.get("__operator__" + operator)
                 if (!(handler instanceof FunctionDefinition)) throw new ParsingError(new Diagnostic(`Cannot find operator "${operator}"`, node.span))
                 const operands = node.children.map(v => parseExpressionNode(v, scope))
-                return createInvocation(node.span, handler, operands)
+                return createInvocation(node.span, handler, operands, scope)
             } else if (node instanceof IfStatementNode) {
                 const predicate = assertValue(parseExpressionNode(node.predicate, scope), node.span)
                 const body = assertValue(parseExpressionNode(node.body, scope), node.span)
@@ -246,7 +246,7 @@ export namespace Typing {
                 if (!body) return new VariableDereference(node.span, variable, "declaration")
 
                 const handler = (scope.get("__operator__assign") ?? unreachable()) as FunctionDefinition
-                return createInvocation(node.span, handler, [new VariableDereference(node.span, variable, "construction"), body])
+                return createInvocation(node.span, handler, [new VariableDereference(node.span, variable, "construction"), body], scope)
             } else if (node instanceof InvocationNode) {
                 const target = parseExpressionNode(node.target, scope)
                 const operands = node.args.map(v => parseExpressionNode(v, scope))
@@ -267,7 +267,7 @@ export namespace Typing {
                             if (!(self.type instanceof Reference)) throw new ParsingError(new Diagnostic(`Cannot call a method on non-ref value`, node.span))
                             const addressOfOperator = scope.get("__operator__addr")
                             if (!(addressOfOperator instanceof FunctionDefinition)) throw unreachable()
-                            operands.unshift(createInvocation(node.span, addressOfOperator, [self]))
+                            operands.unshift(createInvocation(node.span, addressOfOperator, [self], scope))
                         }
 
                         return handler
@@ -276,7 +276,7 @@ export namespace Typing {
                     throw new ParsingError(new Diagnostic(`Target is not callable`, node.span))
                 })()
 
-                return createInvocation(node.span, func, operands)
+                return createInvocation(node.span, func, operands, scope)
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 

@@ -2,11 +2,12 @@ import exp = require("constants")
 import { Diagnostic } from "../../Diagnostic"
 import { Span } from "../../Span"
 import { Type } from "../Type"
+import { Typing } from "../Typing"
 import { ConstExpr } from "./ConstExpr"
 import { Reference } from "./Reference"
 
 export abstract class SpecificFunction extends Type {
-    public abstract match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic
+    public abstract match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic
 
     constructor(
         span: Span,
@@ -20,42 +21,52 @@ export namespace SpecificFunction {
         name: string
     }
 
+    export interface ArgumentInfo {
+        span: Span
+        type: Type
+    }
+
+    export interface Context {
+        scope: Typing.Scope
+        rootScope: Typing.Scope
+    }
+
     export interface Signature {
         target: SpecificFunction
         result: Type
         arguments: Argument[]
     }
 
-    export function testArguments(span: Span, target: SpecificFunction.Argument[], args: Type[], argSpans: Span[]) {
+    export function testArguments(span: Span, target: SpecificFunction.Argument[], args: ArgumentInfo[]) {
         if (args.length != target.length) return new Diagnostic(`Expected ${target.length} argument, got ${args.length}`, span)
 
         for (let i = 0; i < target.length; i++) {
-            if (!args[i].assignableTo(target[i].type)) {
+            if (!args[i].type.assignableTo(target[i].type)) {
                 let targetType = target[i].type
                 if (targetType instanceof Reference) {
-                    if (args[i].assignableTo(targetType.type)) {
-                        return new Diagnostic(`Argument "${target[i].name}" must be a reference value`, argSpans[i])
+                    if (args[i].type.assignableTo(targetType.type)) {
+                        return new Diagnostic(`Argument "${target[i].name}" must be a reference value`, args[i].span)
                     } else {
                         targetType = targetType.type
                     }
                 }
-                return new Diagnostic(`Argument of type "${args[i].name}" is not assignable to "${target[i].name}: ${targetType.name}"`, argSpans[i])
+                return new Diagnostic(`Argument of type "${args[i].type.name}" is not assignable to "${target[i].name}: ${targetType.name}"`, args[i].span)
             }
         }
 
         return null
     }
 
-    export function testConstExpr<T extends any[]>(span: Span, target: { [P in keyof T]: Type }, args: Type[], argSpans: Span[]) {
+    export function testConstExpr<T extends any[]>(span: Span, target: { [P in keyof T]: Type }, args: ArgumentInfo[]) {
         if (args.length != target.length) return new Diagnostic(`Expected ${target.length} argument, got ${args.length}`, span)
 
         for (let i = 0; i < target.length; i++) {
-            const arg = args[i]
+            const arg = args[i].type
             if (arg instanceof ConstExpr && arg.type.assignableTo(target[i])) {/**/ } else {
-                return new Diagnostic(`Argument is not correctly constexpr`, argSpans[i])
+                return new Diagnostic(`Argument is not correctly constexpr`, args[i].span)
             }
         }
 
-        return args.map(v => (v as ConstExpr).value) as T
+        return args.map(v => (v.type as ConstExpr).value) as T
     }
 }
