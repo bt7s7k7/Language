@@ -55,17 +55,20 @@ const ast = Parser.parse(new SourceFile("<anon>",
     ` */
     /* javascript */`
 
+    function foo() {
+        var x = []Number(1,2,3,4)
+    }
+
     function print(msg: Char): Void => extern
     function print(msg: []Char): Void => extern
     function print(msg: Number): Void => extern
+    function print(msg: *Number): Void => extern
     function main() {
-        var x = "Hello world"
-        var y: []Char
-
-        y.data = x.data
-        y.length = x.length
-
-        print(y)
+        foo()
+        var x = []Number.create(4)
+        for (var i = 0; i < x.length; i = i + 1) {
+            print(x[i])
+        }
     }
 
     `

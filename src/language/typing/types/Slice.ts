@@ -16,17 +16,31 @@ import { Pointer } from "./Pointer"
 import { IIntrinsicRefFunction, Reference } from "./Reference"
 import { SpecificFunction } from "./SpecificFunction"
 
+function createLocalSlice(span: Span, builder: FunctionIRBuilder, length: number, type: Type) {
+    const sliceLength = length
+    const elementSize = type.size
+    const sliceSize = elementSize * sliceLength
+    const dataVariable = ".slice_" + builder.nextID() + "_data"
+    builder.registerVariable("variables", span, dataVariable, sliceSize)
+
+    return { elementSize, sliceSize, dataVariable, sliceLength }
+}
+
 export class Slice extends InstanceType {
     public assignableTo(other: Type): boolean {
         return super.assignableTo(other) || (other instanceof Slice && this.type.assignableTo(other.type))
     }
 
+    private readonly props: Record<string, Type.PropertyDef> = {
+        "static !invoke": new FunctionDefinition(Span.native, "__slice_ctor").addOverload(new Slice.SliceCtor(this)),
+        "static create": new FunctionDefinition(Span.native, "__slice_create").addOverload(new Slice.SliceCreate(this)),
+        "data": { type: new Pointer(this.type), offset: 0 },
+        "length": { type: Primitives.Number.TYPE, offset: Primitives.Number.TYPE.size },
+
+    }
+
     public getProperty(key: string) {
-        return {
-            "static !invoke": Slice.SLICE_CTOR,
-            "data": { type: new Pointer(this.type), offset: 0 },
-            "length": { type: Primitives.Number.TYPE, offset: Primitives.Number.TYPE.size },
-        }[key] ?? null
+        return this.props[key] ?? null
     }
 
     constructor(
@@ -51,11 +65,10 @@ export namespace Slice {
         constructor() { super(Span.native, "__operator__as_slice") }
     }
 
-    export const SLICE_CTOR = new FunctionDefinition(Span.native, "__slice_ctor").addOverload(new class SliceCtor extends IntrinsicFunction {
+    export class SliceCtor extends IntrinsicFunction {
         public override match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
-            const slice = args[0] ? (isConstexpr<Type>(args[0], Type.TYPE) ? args[0].value : Never.TYPE) : Never.TYPE
-            const base = slice instanceof Slice ? slice.type : Never.TYPE
-            const target = [{ name: "type", type: new ConstExpr(Span.native, Type.TYPE, slice) }, ...args.slice(1).map((_, i) => ({ name: `elem_${i}`, type: base }))]
+            const base = this.sliceType.type
+            const target = args.map((_, i) => ({ name: `elem_${i}`, type: base }))
             const error = SpecificFunction.testArguments(span, target, args, argSpans)
             if (error) return error
 
@@ -67,14 +80,10 @@ export namespace Slice {
         }
 
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
-            const slice = invocation.signature.result instanceof Slice ? invocation.signature.result : unreachable()
-            const sliceLength = invocation.signature.arguments.length - 1
-            const sliceSize = slice.type.size * sliceLength
-            const dataVariable = ".slice_" + builder.nextID() + "_data"
-            builder.registerVariable("variables", invocation.span, dataVariable, sliceSize)
+            const { dataVariable, sliceSize, sliceLength } = createLocalSlice(invocation.span, builder, invocation.args.length, this.sliceType.type)
 
-            for (const element of invocation.args.slice(1)) {
-                EmissionUtil.safeEmit(builder, slice.type.size, element)
+            for (const element of invocation.args) {
+                EmissionUtil.safeEmit(builder, this.sliceType.type.size, element)
             }
 
             builder.pushInstruction(Instructions.STORE, sliceSize, [dataVariable])
@@ -85,8 +94,35 @@ export namespace Slice {
             return lengthPropSize + Pointer.size
         }
 
-        constructor() { super(Span.native, "__slice_ctor") }
-    })
+        constructor(public readonly sliceType: Slice) { super(Span.native, "__slice_ctor") }
+    }
+
+    export class SliceCreate extends IntrinsicFunction {
+        public override match(span: Span, args: Type[], argSpans: Span[]): SpecificFunction.Signature | Diagnostic {
+            const base = this.sliceType.type
+            const result = SpecificFunction.testConstExpr<[number]>(span, [Primitives.Number.TYPE], args, argSpans)
+            if (!(result instanceof Array)) return result
+
+            return {
+                target: this,
+                arguments: [{ name: "length", type: args[0] }],
+                result: new Slice(base)
+            }
+        }
+
+        public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
+            const sizeArgument = invocation.signature.arguments[0].type
+            if (!isConstexpr<number>(sizeArgument, Primitives.Number.TYPE)) throw unreachable()
+            const { dataVariable, sliceSize, sliceLength } = createLocalSlice(invocation.span, builder, sizeArgument.value, this.sliceType.type)
+
+            builder.pushInstruction(Instructions.VAR_PTR, 0, [dataVariable])
+            const lengthPropSize = new Primitives.Number.Constant(Span.native, sliceLength).emit(builder)
+
+            return lengthPropSize + Pointer.size
+        }
+
+        constructor(public readonly sliceType: Slice) { super(Span.native, "__slice_ctor") }
+    }
 
     export function emitConstant(builder: FunctionIRBuilder, ptr: number, size: number) {
         return new Primitives.Number.Constant(Span.native, ptr).emit(builder)

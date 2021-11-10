@@ -4,6 +4,7 @@ import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
 import { Primitives } from "../Primitives"
 import { Type } from "../Type"
+import { FunctionDefinition } from "../types/FunctionDefinition"
 import { IRefValue, isRefValue, Reference } from "../types/Reference"
 import { Value } from "../Value"
 
@@ -35,7 +36,7 @@ export class MemberAccess extends Value implements IRefValue {
         public readonly target: Value,
         public readonly steps: MemberAccess.Property[]
     ) {
-        super(span, transform(steps.length > 0 ? steps[steps.length - 1].type : target.type, v => isRefValue(target) ? new Reference(v) : v))
+        super(span, transform(steps.length > 0 ? steps[steps.length - 1].type : target.type, v => isRefValue(target) && !(v instanceof Reference) ? new Reference(v) : v))
     }
 }
 
@@ -43,5 +44,15 @@ export namespace MemberAccess {
     export interface Property {
         type: Type
         offset: number
+    }
+}
+
+export class MethodAccess extends Value {
+    constructor(
+        span: Span,
+        public readonly target: MemberAccess | null,
+        public readonly method: FunctionDefinition,
+    ) {
+        super(span, method)
     }
 }

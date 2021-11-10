@@ -31,7 +31,7 @@ import { Block } from "./values/Block"
 import { ForLoop } from "./values/ForLoop"
 import { IfStatement } from "./values/IfStatement"
 import { Invocation } from "./values/Invocation"
-import { MemberAccess } from "./values/MemberAccess"
+import { MemberAccess, MethodAccess } from "./values/MemberAccess"
 import { NOP } from "./values/NOP"
 import { Return } from "./values/Return"
 import { StringConstant } from "./values/StringConstant"
@@ -137,13 +137,18 @@ export namespace Typing {
             const target = parseExpressionNode(targetNode, scope)
 
             const steps: MemberAccess.Property[] = []
-            for (let { name, span } of path) {
+            for (let i = 0; i < path.length; i++) {
+                let { name, span } = path[i]
                 const type = steps[steps.length - 1]?.type ?? (target instanceof Value ? target.type : (name = "static " + name, target))
                 const property = type.getProperty(name)
 
                 if (!property) throw new ParsingError(new Diagnostic(`Type "${type.name}" does not have property "${name}"`, span))
 
-                if (property instanceof FunctionDefinition) return property
+                if (property instanceof FunctionDefinition) {
+                    if (i != path.length - 1) throw new ParsingError(new Diagnostic(`Cannot index a method`, span))
+
+                    return new MethodAccess(node.span, target instanceof Type ? null : new MemberAccess(node.span, target, steps), property)
+                }
                 if (property instanceof ConstExpr) throw unreachable()
 
                 const step = property
@@ -251,9 +256,21 @@ export namespace Typing {
                         const invokeFunction = target.getProperty("static !invoke")
                         if (!(invokeFunction instanceof FunctionDefinition)) unreachable()
                         if (invokeFunction) {
-                            operands.unshift(target)
                             return invokeFunction
                         }
+                    }
+
+                    if (target instanceof MethodAccess) {
+                        const handler = target.method
+                        const self = target.target
+                        if (self) {
+                            if (!(self.type instanceof Reference)) throw new ParsingError(new Diagnostic(`Cannot call a method on non-ref value`, node.span))
+                            const addressOfOperator = scope.get("__operator__addr")
+                            if (!(addressOfOperator instanceof FunctionDefinition)) throw unreachable()
+                            operands.unshift(createInvocation(node.span, addressOfOperator, [self]))
+                        }
+
+                        return handler
                     }
 
                     throw new ParsingError(new Diagnostic(`Target is not callable`, node.span))

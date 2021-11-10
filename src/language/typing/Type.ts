@@ -8,7 +8,7 @@ export abstract class Type {
         return other == this
     }
 
-    public getProperty(key: string): FunctionDefinition | ConstExpr | MemberAccess.Property | null {
+    public getProperty(key: string): Type.PropertyDef | null {
         return null
     }
 
@@ -21,6 +21,8 @@ export abstract class Type {
 
 export namespace Type {
     export const TYPE = new class TypeType extends Type { constructor() { super(Span.native, "Type", Type.NOT_INSTANTIABLE) } }
+
+    export type PropertyDef = FunctionDefinition | ConstExpr | MemberAccess.Property
 
     export const NOT_INSTANTIABLE = -1
 }

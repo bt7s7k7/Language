@@ -1,3 +1,4 @@
+import { unreachable } from "../../../comTypes/util"
 import { FunctionIRBuilder } from "../../emission/FunctionIRBuilder"
 import { Span } from "../../Span"
 import { IntrinsicFunction } from "../intrinsic/IntrinsicFunction"
@@ -16,7 +17,7 @@ export interface IIntrinsicRefFunction {
     emitPtr(builder: FunctionIRBuilder, invocation: Invocation): void
 }
 
-export function isRefValue<T extends Value>(value: T): value is T & IRefValue {
+export function isRefValue<T extends Value | Type>(value: T): value is T & IRefValue {
     return "emitStore" in value && (value as T & IRefValue).emitStore != null
 }
 
@@ -35,7 +36,10 @@ export class Reference extends Type {
 
     constructor(
         public readonly type: Type
-    ) { super(Span.native, `${type.name}(&)`, type.size) }
+    ) {
+        super(Span.native, `${type.name}(&)`, type.size)
+        if (this.type instanceof Reference) throw unreachable()
+    }
 
     public static dereference(type: Type) {
         return type instanceof Reference ? type.type : type
