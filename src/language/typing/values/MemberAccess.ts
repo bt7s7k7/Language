@@ -41,9 +41,13 @@ export class MemberAccess extends Value implements IRefValue {
 }
 
 export namespace MemberAccess {
-    export interface Property {
-        type: Type
-        offset: number
+    export class Property extends Type {
+        constructor(
+            span: Span,
+            public readonly name: string,
+            public readonly type: Type,
+            public readonly offset: number
+        ) { super(span, name, Type.NOT_INSTANTIABLE) }
     }
 }
 

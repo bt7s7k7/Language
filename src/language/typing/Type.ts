@@ -8,10 +8,6 @@ export abstract class Type {
         return other == this
     }
 
-    public getProperty(key: string): Type.PropertyDef | null {
-        return null
-    }
-
     constructor(
         public readonly span: Span,
         public name: string,

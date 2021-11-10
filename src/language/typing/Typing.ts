@@ -26,6 +26,7 @@ import { InstanceType } from "./types/InstanceType"
 import { ProgramFunction } from "./types/ProgramFunction"
 import { Reference } from "./types/Reference"
 import { Slice } from "./types/Slice"
+import { normalizeType } from "./util"
 import { Value } from "./Value"
 import { Block } from "./values/Block"
 import { ForLoop } from "./values/ForLoop"
@@ -87,15 +88,34 @@ function assertValue(target: Value | Type, span: Span) {
 export namespace Typing {
     export class Scope {
         public map = new Map<string, Value | Type>()
+        public root: Scope = this.parent?.root ?? this
+        protected initializerCache: Set<string> = this.root.initializerCache ?? new Set()
 
         public get(name: string): Value | Type | undefined {
             return this.map.get(name) ?? this.parent?.get(name)
+        }
+
+        public getProperty(type: Type, name: string) {
+            return this.get(normalizeType(type).name + "." + name)
         }
 
         public register(name: string, value: Value | Type) {
             if (this.map.has(name)) throw new ParsingError(new Diagnostic("Duplicate declaration", value.span), new Diagnostic("Declared here", this.map.get(name)!.span))
             this.map.set(name, value)
             return true
+        }
+
+        public registerMany(namespace: string | null, values: Record<string, Value | Type>) {
+            for (const [key, value] of Object.entries(values)) {
+                const name = namespace ? namespace + "." + key : key
+                this.register(name, value)
+            }
+        }
+
+        public runInitializer(name: string, callback: () => void) {
+            if (this.initializerCache.has(name)) return
+            this.initializerCache.add(name)
+            callback()
         }
 
         constructor(
@@ -140,7 +160,7 @@ export namespace Typing {
             for (let i = 0; i < path.length; i++) {
                 let { name, span } = path[i]
                 const type = steps[steps.length - 1]?.type ?? (target instanceof Value ? target.type : (name = "static " + name, target))
-                const property = type.getProperty(name)
+                const property = scope.getProperty(type, name)
 
                 if (!property) throw new ParsingError(new Diagnostic(`Type "${type.name}" does not have property "${name}"`, span))
 
@@ -150,6 +170,7 @@ export namespace Typing {
                     return new MethodAccess(node.span, target instanceof Type ? null : new MemberAccess(node.span, target, steps), property)
                 }
                 if (property instanceof ConstExpr) throw unreachable()
+                if (!(property instanceof MemberAccess.Property)) throw unreachable()
 
                 const step = property
                 steps.push(step)
@@ -253,7 +274,7 @@ export namespace Typing {
                 const func = ((): FunctionDefinition => {
                     if (target instanceof FunctionDefinition) return target
                     if (target instanceof Type) {
-                        const invokeFunction = target.getProperty("static !invoke")
+                        const invokeFunction = scope.getProperty(target, "static !invoke")
                         if (!(invokeFunction instanceof FunctionDefinition)) unreachable()
                         if (invokeFunction) {
                             return invokeFunction

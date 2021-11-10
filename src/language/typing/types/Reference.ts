@@ -30,10 +30,6 @@ export class Reference extends Type {
         return super.assignableTo(other) || this.type.assignableTo(other) || (other instanceof Reference && this.type.assignableTo(other.type))
     }
 
-    public getProperty(key: string) {
-        return this.type.getProperty(key)
-    }
-
     constructor(
         public readonly type: Type
     ) {

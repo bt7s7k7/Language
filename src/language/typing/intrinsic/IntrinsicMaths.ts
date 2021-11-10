@@ -10,12 +10,9 @@ import { Never } from "../types/base"
 import { ConstExpr } from "../types/ConstExpr"
 import { isRefValue, Reference } from "../types/Reference"
 import { SpecificFunction } from "../types/SpecificFunction"
+import { normalizeType } from "../util"
 import { Invocation } from "../values/Invocation"
 import { IntrinsicFunction } from "./IntrinsicFunction"
-
-function normalizeType(type: Type) {
-    return ConstExpr.removeConstexpr(Reference.dereference(type))
-}
 
 abstract class Operation extends IntrinsicFunction {
     public match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {

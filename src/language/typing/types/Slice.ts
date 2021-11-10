@@ -7,7 +7,9 @@ import { Instructions } from "../../vm/Instructions"
 import { IntrinsicFunction } from "../intrinsic/IntrinsicFunction"
 import { Primitives } from "../Primitives"
 import { Type } from "../Type"
+import { Typing } from "../Typing"
 import { Invocation } from "../values/Invocation"
+import { MemberAccess } from "../values/MemberAccess"
 import { Never } from "./base"
 import { ConstExpr, isConstexpr } from "./ConstExpr"
 import { FunctionDefinition } from "./FunctionDefinition"
@@ -26,21 +28,18 @@ function createLocalSlice(span: Span, builder: FunctionIRBuilder, length: number
     return { elementSize, sliceSize, dataVariable, sliceLength }
 }
 
+function registerSliceMethods(slice: Slice, scope: Typing.Scope) {
+    scope.registerMany(slice.name, {
+        "static !invoke": new FunctionDefinition(Span.native, "__slice_ctor").addOverload(new Slice.SliceCtor(slice)),
+        "static create": new FunctionDefinition(Span.native, "__slice_create").addOverload(new Slice.SliceCreate(slice)),
+        "data": new MemberAccess.Property(Span.native, "data", new Pointer(slice.type), 0),
+        "length": new MemberAccess.Property(Span.native, "length", Primitives.Number.TYPE, Primitives.Number.TYPE.size)
+    })
+}
+
 export class Slice extends InstanceType {
     public assignableTo(other: Type): boolean {
         return super.assignableTo(other) || (other instanceof Slice && this.type.assignableTo(other.type))
-    }
-
-    private readonly props: Record<string, Type.PropertyDef> = {
-        "static !invoke": new FunctionDefinition(Span.native, "__slice_ctor").addOverload(new Slice.SliceCtor(this)),
-        "static create": new FunctionDefinition(Span.native, "__slice_create").addOverload(new Slice.SliceCreate(this)),
-        "data": { type: new Pointer(this.type), offset: 0 },
-        "length": { type: Primitives.Number.TYPE, offset: Primitives.Number.TYPE.size },
-
-    }
-
-    public getProperty(key: string) {
-        return this.props[key] ?? null
     }
 
     constructor(
@@ -54,11 +53,16 @@ export namespace Slice {
             const result = SpecificFunction.testConstExpr<[Type]>(span, [Type.TYPE], args)
             if (!(result instanceof Array)) return result
             const type = result[0]
+            const sliceType = new Slice(type)
+
+            context.scope.runInitializer(sliceType.name, () => {
+                registerSliceMethods(sliceType, context.rootScope)
+            })
 
             return {
                 target: this,
                 arguments: [{ name: "type", type }],
-                result: new ConstExpr(type.span, Type.TYPE, new Slice(type))
+                result: new ConstExpr(type.span, Type.TYPE, sliceType)
             }
         }
 
