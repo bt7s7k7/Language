@@ -6,9 +6,11 @@ import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
 import { IntrinsicFunction } from "../intrinsic/IntrinsicFunction"
 import { Type } from "../Type"
+import { Typing } from "../Typing"
 import { Invocation } from "../values/Invocation"
-import { Never } from "./base"
+import { Never, Void } from "./base"
 import { ConstExpr } from "./ConstExpr"
+import { FunctionDefinition } from "./FunctionDefinition"
 import { InstanceType } from "./InstanceType"
 import { IIntrinsicRefFunction, isRefValue, Reference } from "./Reference"
 import { SpecificFunction } from "./SpecificFunction"
@@ -23,17 +25,29 @@ export class Pointer extends InstanceType {
     ) { super(Span.native, "*" + type.name, Pointer.size) }
 }
 
+function registerPointerMethods(pointer: Pointer, scope: Typing.Scope) {
+    scope.registerMany(pointer.name, {
+        "static alloc": new FunctionDefinition(Span.native, "alloc").addOverload(new Pointer.PointerAlloc(pointer)),
+        "free": new FunctionDefinition(Span.native, "free").addOverload(new Pointer.PointerFree(pointer)),
+    })
+}
+
 export namespace Pointer {
     export const AS_POINTER_OPERATOR = new class extends SpecificFunction {
         public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
             const result = SpecificFunction.testConstExpr<[Type]>(span, [Type.TYPE], args)
             if (!(result instanceof Array)) return result
             const type = result[0]
+            const pointerType = new Pointer(type)
+
+            context.scope.runInitializer(pointerType.name, () => {
+                registerPointerMethods(pointerType, context.rootScope)
+            })
 
             return {
                 target: this,
                 arguments: [{ name: "type", type }],
-                result: new ConstExpr(type.span, Type.TYPE, new Pointer(type))
+                result: new ConstExpr(type.span, Type.TYPE, pointerType)
             }
         }
 
@@ -97,6 +111,50 @@ export namespace Pointer {
         }
 
         constructor() { super(Span.native, "__operator__deref") }
+    }
+
+    export class PointerAlloc extends IntrinsicFunction {
+        public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+            const error = SpecificFunction.testArguments(span, [], args)
+            if (error) return error
+
+            return {
+                arguments: [],
+                result: this.pointerType,
+                target: this
+            }
+        }
+
+        public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
+            builder.pushInstruction(Instructions.ALLOC, this.pointerType.type.size)
+            return Pointer.size
+        }
+
+        constructor(public readonly pointerType: Pointer) { super(Span.native, "alloc") }
+    }
+
+    export class PointerFree extends IntrinsicFunction {
+        public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+            const target = [{ name: "self", type: new Pointer(this.pointerType) }]
+            const error = SpecificFunction.testArguments(span, target, args)
+            if (error) return error
+
+            return {
+                arguments: target,
+                result: Void.TYPE,
+                target: this
+            }
+        }
+
+        public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
+            EmissionUtil.safeEmit(builder, Pointer.size, invocation.args[0])
+            builder.pushInstruction(Instructions.LOAD_PTR, Pointer.size, [])
+            builder.pushInstruction(Instructions.FREE, this.pointerType.type.size)
+
+            return 0
+        }
+
+        constructor(public readonly pointerType: Pointer) { super(Span.native, "free") }
     }
 
     export const size = 8

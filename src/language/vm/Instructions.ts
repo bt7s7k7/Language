@@ -10,6 +10,9 @@ export namespace Instructions {
     export const LOAD_PTR = 9
     export const STORE_PTR = 10
     export const MEMBER = 11
+    export const ALLOC = 12
+    export const FREE = 13
+
     export const ADD = 101
     export const SUB = 102
     export const MUL = 103
@@ -20,6 +23,7 @@ export namespace Instructions {
     export const GT = 153
     export const LTE = 152
     export const GTE = 153
+
     export const BR_TRUE = 50
     export const BR_FALSE = 51
     export const BR = 52

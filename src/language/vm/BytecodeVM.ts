@@ -1,16 +1,18 @@
 import { unreachable } from "../../comTypes/util"
 import { Pointer } from "../typing/types/Pointer"
 import { ExecutableHeader } from "./ExecutableHeader"
+import { Heap } from "./Heap"
 import { Instructions } from "./Instructions"
 import { Memory, MemoryView } from "./Memory"
 import { AnyTypedArrayCtor } from "./types"
 
 namespace MemoryMap {
-    export const SEGMENT_SIZE = 3002399035752448
+    export const SEGMENT_SIZE = 3000000000000000
 
     export const SEGMENTS = [
         "data",
-        "variableStack"
+        "variableStack",
+        "heap"
     ] as const
 
     export function prefixAddress(address: number, segment: (typeof SEGMENTS)[number]) {
@@ -48,6 +50,7 @@ const TYPES: Record<(typeof Instructions.Types)[keyof typeof Instructions.Types]
 export class BytecodeVM {
     public readonly stack = new Memory()
     public readonly variableStack = new Memory()
+    public readonly heap = new Heap()
     public readonly controlStack: ExecutionContext[] = []
     public readonly externFunctions = new Map<string, BytecodeVM.ExternFunction>()
 
@@ -72,6 +75,8 @@ export class BytecodeVM {
 
         if (type == "variableStack") {
             return this.variableStack.write(offset, data)
+        } else if (type == "heap") {
+            this.heap.memory.write(offset, data)
         } else unreachable()
     }
 
@@ -82,6 +87,8 @@ export class BytecodeVM {
             return this.variableStack.read(offset, size)
         } else if (type == "data") {
             return new MemoryView(this.data, offset, size)
+        } else if (type == "heap") {
+            return this.heap.memory.read(offset, size)
         } else unreachable()
     }
 
@@ -295,6 +302,17 @@ export class BytecodeVM {
                     const value = this.stack.pop(subtype)
                     const result = value.slice(offset, size)
                     this.stack.push(result)
+                } break
+                case Instructions.ALLOC: {
+                    const offset = this.heap.allocate(subtype)
+                    const ptr = MemoryMap.prefixAddress(offset, "heap")
+                    this.stack.pushConst(new Float64Array([ptr]).buffer)
+                } break
+                case Instructions.FREE: {
+                    const ptr = this.stack.pop(8).as(Float64Array)[0]
+                    const [offset, type] = MemoryMap.parseAddress(ptr)
+                    if (type != "heap") throw new Error("Cannot free address from " + type)
+                    this.heap.free(offset)
                 } break
                 default: {
                     throw new Error("Invalid instruction")

@@ -23,6 +23,7 @@ import { Never } from "./types/base"
 import { ConstExpr, isConstexpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
+import { Pointer } from "./types/Pointer"
 import { ProgramFunction } from "./types/ProgramFunction"
 import { Reference } from "./types/Reference"
 import { Slice } from "./types/Slice"
@@ -96,7 +97,10 @@ export namespace Typing {
         }
 
         public getProperty(type: Type, name: string) {
-            return this.get(normalizeType(type).name + "." + name)
+            type = normalizeType(type)
+            const ret = this.get(type.name + "." + name)
+            if (ret == null && type instanceof Pointer) return this.get(type.type.name + "." + name)
+            return ret
         }
 
         public register(name: string, value: Value | Type) {

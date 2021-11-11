@@ -56,7 +56,9 @@ const ast = Parser.parse(new SourceFile("<anon>",
     /* javascript */`
 
     function foo() {
-        var x = []Number(1,2,3,4)
+        var x = *Number.alloc()
+        x.* = 5
+        return x
     }
 
     function print(msg: Char): Void => extern
@@ -64,11 +66,11 @@ const ast = Parser.parse(new SourceFile("<anon>",
     function print(msg: Number): Void => extern
     function print(msg: *Number): Void => extern
     function main() {
-        foo()
-        var x = []Number.create(4)
-        for (var i = 0; i < x.length; i = i + 1) {
-            print(x[i])
-        }
+        var x = foo()
+        print(x)
+        print(x.*)
+
+        x.free()
     }
 
     `
