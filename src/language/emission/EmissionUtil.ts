@@ -22,5 +22,15 @@ export namespace EmissionUtil {
         return ret
     }
 
+    export function emitConstant(builder: FunctionIRBuilder, data: ArrayBuffer) {
+        const size = data.byteLength
+        const ALIGNED_SIZE = Math.ceil(size / 4) * 4
+        const ALIGNMENT_PADDING = 0
+        const temp = new Uint8Array(ALIGNED_SIZE)
+        temp.set(new Uint8Array(data), ALIGNMENT_PADDING)
+        builder.pushInstruction(Instructions.CONST, size, [...new Uint32Array(temp.buffer)])
+        return size
+    }
+
     export const RETURN_VARIABLE_NAME = ".return"
 }

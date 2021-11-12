@@ -12,6 +12,9 @@ export namespace Instructions {
     export const MEMBER = 11
     export const ALLOC = 12
     export const FREE = 13
+    export const ALLOC_ARR = 14
+    export const STACK_COPY = 16
+    export const STACK_SWAP = 17
 
     export const ADD = 101
     export const SUB = 102

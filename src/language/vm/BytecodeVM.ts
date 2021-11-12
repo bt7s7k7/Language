@@ -314,6 +314,21 @@ export class BytecodeVM {
                     if (type != "heap") throw new Error("Cannot free address from " + type)
                     this.heap.free(offset)
                 } break
+                case Instructions.ALLOC_ARR: {
+                    const length = this.stack.pop(8).as(Float64Array)[0]
+                    const offset = this.heap.allocate(subtype * length)
+                    const ptr = MemoryMap.prefixAddress(offset, "heap")
+                    this.stack.pushConst(new Float64Array([ptr]).buffer)
+                } break
+                case Instructions.STACK_COPY: {
+                    const segment = this.stack.peek(subtype)
+                    this.stack.push(segment)
+                } break
+                case Instructions.STACK_SWAP: {
+                    const data = this.stack.pop(subtype * 2).clone()
+                    this.stack.push(data.slice(subtype, subtype))
+                    this.stack.push(data.slice(0, subtype))
+                } break
                 default: {
                     throw new Error("Invalid instruction")
                 }

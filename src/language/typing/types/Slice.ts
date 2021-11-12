@@ -10,7 +10,7 @@ import { Type } from "../Type"
 import { Typing } from "../Typing"
 import { Invocation } from "../values/Invocation"
 import { MemberAccess } from "../values/MemberAccess"
-import { Never } from "./base"
+import { Never, Void } from "./base"
 import { ConstExpr, isConstexpr } from "./ConstExpr"
 import { FunctionDefinition } from "./FunctionDefinition"
 import { InstanceType } from "./InstanceType"
@@ -32,7 +32,9 @@ function registerSliceMethods(slice: Slice, scope: Typing.Scope) {
     scope.registerMany(slice.name, {
         "static !invoke": new FunctionDefinition(Span.native, "__slice_ctor").addOverload(new Slice.SliceCtor(slice)),
         "static create": new FunctionDefinition(Span.native, "__slice_create").addOverload(new Slice.SliceCreate(slice)),
-        "data": new MemberAccess.Property(Span.native, "data", new Pointer(slice.type), 0),
+        "static alloc": new FunctionDefinition(Span.native, "alloc").addOverload(new Slice.SliceAlloc(slice)),
+        "free": new FunctionDefinition(Span.native, "free").addOverload(new Slice.SliceFree(slice)),
+        "data": new MemberAccess.Property(Span.native, "data", new Slice(slice.type), 0),
         "length": new MemberAccess.Property(Span.native, "length", Primitives.Number.TYPE, Primitives.Number.TYPE.size)
     })
 }
@@ -95,7 +97,7 @@ export namespace Slice {
             builder.pushInstruction(Instructions.VAR_PTR, 0, [dataVariable])
             const lengthPropSize = new Primitives.Number.Constant(Span.native, sliceLength).emit(builder)
 
-            return lengthPropSize + Pointer.size
+            return lengthPropSize + Slice.size
         }
 
         constructor(public readonly sliceType: Slice) { super(Span.native, "__slice_ctor") }
@@ -122,7 +124,7 @@ export namespace Slice {
             builder.pushInstruction(Instructions.VAR_PTR, 0, [dataVariable])
             const lengthPropSize = new Primitives.Number.Constant(Span.native, sliceLength).emit(builder)
 
-            return lengthPropSize + Pointer.size
+            return lengthPropSize + Slice.size
         }
 
         constructor(public readonly sliceType: Slice) { super(Span.native, "__slice_ctor") }
@@ -178,6 +180,54 @@ export namespace Slice {
         }
 
         constructor() { super(Span.native, "__operator__index") }
+    }
+
+    export class SliceAlloc extends IntrinsicFunction {
+        public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+            const target = [{ name: "length", type: Primitives.Number.TYPE }]
+            const error = SpecificFunction.testArguments(span, target, args)
+            if (error) return error
+
+            return {
+                arguments: target,
+                result: this.sliceType,
+                target: this
+            }
+        }
+
+        public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
+            EmissionUtil.safeEmit(builder, 8, invocation.args[0])
+            builder.pushInstruction(Instructions.STACK_COPY, 8)
+            builder.pushInstruction(Instructions.ALLOC_ARR, this.sliceType.type.size)
+            builder.pushInstruction(Instructions.STACK_SWAP, 8)
+            return Slice.size
+        }
+
+        constructor(public readonly sliceType: Slice) { super(Span.native, "alloc") }
+    }
+
+    export class SliceFree extends IntrinsicFunction {
+        public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+            const target = [{ name: "self", type: new Pointer(this.sliceType) }]
+            const error = SpecificFunction.testArguments(span, target, args)
+            if (error) return error
+
+            return {
+                arguments: target,
+                result: Void.TYPE,
+                target: this
+            }
+        }
+
+        public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
+            EmissionUtil.safeEmit(builder, Pointer.size, invocation.args[0])
+            builder.pushInstruction(Instructions.LOAD_PTR, 8, [])
+            builder.pushInstruction(Instructions.FREE)
+
+            return 0
+        }
+
+        constructor(public readonly sliceType: Slice) { super(Span.native, "free") }
     }
 
     export const size = 16

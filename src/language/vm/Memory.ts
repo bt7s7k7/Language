@@ -41,6 +41,11 @@ export class Memory {
         return ret
     }
 
+    public peek(size: number) {
+        const ret = this.read(this.length - size, size)
+        return ret
+    }
+
     public push(data: MemoryView) {
         const offset = this.length
         this.expand(data.length)
@@ -73,9 +78,16 @@ export class MemoryView {
 
     public slice(offset: number, size: number) {
         if (offset >= this.length) throw new RangeError("Offset is outside the range of the MemoryView")
-        if ((offset + size) >= this.length) throw new RangeError("Ending is outside the range of the MemoryView")
+        if ((offset + size) > this.length) throw new RangeError("Ending is outside the range of the MemoryView")
 
         return new MemoryView(this.buffer, this.offset + offset, size)
+    }
+
+    public clone() {
+        const data = this.as(Uint8Array)
+        const copyArray = new Uint8Array(data.length)
+        copyArray.set(data)
+        return new MemoryView(copyArray.buffer, 0, copyArray.length)
     }
 
     protected array: Uint8Array | null = null
