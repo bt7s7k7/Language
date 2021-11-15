@@ -97,4 +97,10 @@ export class MemoryView {
         public readonly offset: number = 0,
         public readonly length: number = buffer.byteLength
     ) { }
+
+    public static readonly empty = new MemoryView(new ArrayBuffer(0), 0, 0)
+
+    public static from(buffer: ArrayBuffer) {
+        return new MemoryView(buffer, 0, buffer.byteLength)
+    }
 }

@@ -40,6 +40,7 @@ interface ExecutionContext {
     pc: number
     size: number
     stackLen: number
+    callback?: (data: MemoryView) => void
 }
 
 const TYPES: Record<(typeof Instructions.Types)[keyof typeof Instructions.Types], AnyTypedArrayCtor> = {
@@ -54,14 +55,15 @@ export class BytecodeVM {
     public readonly controlStack: ExecutionContext[] = []
     public readonly externFunctions = new Map<string, BytecodeVM.ExternFunction>()
 
-    public directCall(functionIndex: number, args: ArrayBuffer[], returnSize: number) {
+    public directCall(functionIndex: number, args: ArrayBuffer[], callback: ExecutionContext["callback"]) {
         for (const arg of args) {
             this.stack.pushConst(arg)
         }
 
-        this.run(functionIndex)
-
-        return this.stack.pop(returnSize)
+        const frame = this.makeCall(functionIndex)
+        frame.callback = callback
+        this.controlStack.push(frame)
+        this.run()
     }
 
     public findFunction(name: string) {
@@ -92,20 +94,33 @@ export class BytecodeVM {
         } else unreachable()
     }
 
-    public run(entryFunctionIndex: number) {
-        this.controlStack.push(this.makeCall(entryFunctionIndex))
-        let ctx = this.controlStack[this.controlStack.length - 1]
+    public allocate(size: number) {
+        const offset = this.heap.allocate(size)
+                    return MemoryMap.prefixAddress(offset, "heap")
+    }
 
+    public free(ptr: number) {
+        const [offset, type] = MemoryMap.parseAddress(ptr)
+        if (type != "heap") throw new Error("Cannot free address from " + type)
+        this.heap.free(offset)
+    }
+
+    public resume(data: MemoryView) {
+        const entry = this.controlStack.pop()!
+        const returnSize = this.makeReturn(entry)
+        if (returnSize != data.length) throw new Error(`Tried to resume execution, but returned data size mismatch (${data.length}, ${returnSize})`)
+        if (returnSize != 0) this.stack.write(this.stack.length - returnSize, data)
+        this.run()
+    }
+
+    public run() {
+        let ctx = this.controlStack[this.controlStack.length - 1]
         while (ctx.pc < ctx.data.length || ctx.function.offset == -1) {
             if (ctx.function.offset == -1) {
                 const extern = this.externFunctions.get(ctx.function.name)
                 if (!extern) throw new Error(`Cannot find extern function for '${ctx.function.name}'`)
                 extern(ctx, this)
-                const entry = this.controlStack.pop()!
-                this.makeReturn(entry)
-                if (this.controlStack.length == 0) return
-                ctx = this.controlStack[this.controlStack.length - 1]
-                continue
+                return
             }
 
             const curr = ctx.data[ctx.pc]
@@ -132,8 +147,11 @@ export class BytecodeVM {
                 case Instructions.RETURN: {
                     const entry = this.controlStack.pop()!
                     console.log("Return")
-                    this.makeReturn(entry)
-                    if (this.controlStack.length == 0) return
+                    const returnSize = this.makeReturn(entry)
+                    if (this.controlStack.length == 0) {
+                        entry.callback?.(this.stack.pop(returnSize))
+                        return
+                    }
                     ctx = this.controlStack[this.controlStack.length - 1]
                 } break
                 case Instructions.CONST: {
@@ -304,20 +322,16 @@ export class BytecodeVM {
                     this.stack.push(result)
                 } break
                 case Instructions.ALLOC: {
-                    const offset = this.heap.allocate(subtype)
-                    const ptr = MemoryMap.prefixAddress(offset, "heap")
+                    const ptr = this.allocate(subtype)
                     this.stack.pushConst(new Float64Array([ptr]).buffer)
                 } break
                 case Instructions.FREE: {
                     const ptr = this.stack.pop(8).as(Float64Array)[0]
-                    const [offset, type] = MemoryMap.parseAddress(ptr)
-                    if (type != "heap") throw new Error("Cannot free address from " + type)
-                    this.heap.free(offset)
+                   this.free(ptr)
                 } break
                 case Instructions.ALLOC_ARR: {
                     const length = this.stack.pop(8).as(Float64Array)[0]
-                    const offset = this.heap.allocate(subtype * length)
-                    const ptr = MemoryMap.prefixAddress(offset, "heap")
+                    const ptr = this.allocate(subtype * length)
                     this.stack.pushConst(new Float64Array([ptr]).buffer)
                 } break
                 case Instructions.STACK_COPY: {
@@ -380,14 +394,17 @@ export class BytecodeVM {
     protected makeReturn(entry: ExecutionContext) {
         if (this.stack.length != entry.stackLen) throw new Error("Stack length was not returned to the same value as when the function started (" + this.stack.length + "," + entry.stackLen + ")")
         const referenceOffset = entry.function.arguments.length + entry.function.variables.length
+        let returnSize = 0
         for (let i = 0; i < entry.function.returns.length; i++) {
             const offset = entry.references[referenceOffset + i]
             const size = entry.function.returns[i].size
             const data = this.variableStack.read(offset, size)
             this.stack.push(data)
+            returnSize += data.length
         }
 
         this.variableStack.shrink(entry.size)
+        return returnSize
     }
 
 

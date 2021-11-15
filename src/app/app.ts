@@ -1,5 +1,6 @@
 import chalk = require("chalk")
-import { inspect, TextDecoder } from "util"
+import { createInterface } from "readline"
+import { inspect, TextDecoder, TextEncoder } from "util"
 import { Diagnostic } from "../language/Diagnostic"
 import { Assembler } from "../language/emission/Assembler"
 import { Emitter } from "../language/emission/Emitter"
@@ -40,6 +41,9 @@ MemoryView.prototype[inspect.custom] = function (this: MemoryView) {
     return chalk.yellow(`[${this.length}]${[...this.getUint8Array()].map(v => v.toString(16).padStart(2, "0")).join("").replace(/^0+/, "")}${represent}`)
 }
 
+const rl = createInterface(process.stdin, process.stdout)
+rl.pause()
+
 const ast = Parser.parse(new SourceFile("<anon>",
     /* `
  function fibonacci(i: int) {
@@ -55,28 +59,15 @@ const ast = Parser.parse(new SourceFile("<anon>",
     ` */
     /* javascript */`
 
-    function foo() {
-        var x = []Number.alloc(5)
-        x[0] = 1
-        x[1] = 2
-        x[2] = 3
-        x[3] = 4
-        x[4] = 5
-        return x
-    }
-
     function print(msg: Char): Void => extern
     function print(msg: []Char): Void => extern
     function print(msg: Number): Void => extern
     function print(msg: *Number): Void => extern
+    function readline(): []Char => extern
     function main() {
-        var y = foo()
-
-        for (var i = 0; i < y.length; i = i + 1) {
-            print(y[i])
-        }
-
-        y.free()
+        var input = readline()
+        print(input)
+        input.free()
     }
 
     `
@@ -137,6 +128,7 @@ if (ast instanceof Diagnostic) {
         const print: BytecodeVM.ExternFunction = (ctx, vm) => {
             const value = vm.variableStack.read(ctx.references[0], ctx.function.arguments[0].size)
             console.log(chalk.cyanBright("==>"), value)
+            vm.resume(MemoryView.empty)
         }
 
         vm.externFunctions.set("print(msg: Number): Void", print)
@@ -146,9 +138,24 @@ if (ast instanceof Diagnostic) {
             const [ptr, size] = vm.variableStack.read(ctx.references[0], ctx.function.arguments[0].size).as(Float64Array)
             const msg = new TextDecoder().decode(vm.loadPointer(ptr, size).as(Uint8Array))
             console.log(chalk.cyanBright("==>"), msg)
+
+            vm.resume(MemoryView.empty)
         })
 
-        const result = vm.directCall(vm.findFunction("main(): Void"), [new Float64Array([5, 25]).buffer], 8)
-        console.log(result)
+        vm.externFunctions.set("readline(): []Char", (ctx, vm) => {
+            rl.resume()
+            rl.question("> ", answer => {
+                rl.pause()
+                const data = new TextEncoder().encode(answer + "\x00")
+                const ptr = vm.allocate(data.length)
+                vm.storePointer(ptr, MemoryView.from(data.buffer))
+                vm.resume(MemoryView.from(new Float64Array([ptr, data.byteLength]).buffer))
+            })
+        })
+
+        vm.directCall(vm.findFunction("main(): Void"), [new Float64Array([5, 25]).buffer], (result) => {
+            console.log(result)
+            rl.close()
+        })
     }
 }
