@@ -64,10 +64,26 @@ const ast = Parser.parse(new SourceFile("<anon>",
     function print(msg: Number): Void => extern
     function print(msg: *Number): Void => extern
     function readline(): []Char => extern
+
+    function memcpy(target: []Char, src: []Char, offset: Number) {
+        for (var i = offset; i < target.length && i < src.length + offset; i = i + 1) {
+            target[i] = src[i - offset]
+        }
+    }
+
+    function strcat(a: []Char, b: []Char) {
+        var length = a.length + b.length
+        var dest = []Char.alloc(length)
+        memcpy(dest, a, 0)
+        memcpy(dest, b, a.length)
+        return dest
+    }
+
     function main() {
-        var input = readline()
-        print(input)
-        input.free()
+        var a = readline()
+        var b = readline()
+        var result = strcat(a, b)
+        print(result)
     }
 
     `
