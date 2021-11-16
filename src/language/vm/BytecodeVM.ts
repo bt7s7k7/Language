@@ -33,7 +33,7 @@ namespace MemoryMap {
 }
 
 
-interface ExecutionContext {
+interface StackFrame {
     function: ExecutableHeader.Function
     data: Uint32Array
     references: number[]
@@ -52,10 +52,10 @@ export class BytecodeVM {
     public readonly stack = new Memory()
     public readonly variableStack = new Memory()
     public readonly heap = new Heap()
-    public readonly controlStack: ExecutionContext[] = []
+    public readonly controlStack: StackFrame[] = []
     public readonly externFunctions = new Map<string, BytecodeVM.ExternFunction>()
 
-    public directCall(functionIndex: number, args: ArrayBuffer[], callback: ExecutionContext["callback"]) {
+    public directCall(functionIndex: number, args: ArrayBuffer[], callback: StackFrame["callback"]) {
         for (const arg of args) {
             this.stack.pushConst(arg)
         }
@@ -96,7 +96,7 @@ export class BytecodeVM {
 
     public allocate(size: number) {
         const offset = this.heap.allocate(size)
-                    return MemoryMap.prefixAddress(offset, "heap")
+        return MemoryMap.prefixAddress(offset, "heap")
     }
 
     public free(ptr: number) {
@@ -329,7 +329,7 @@ export class BytecodeVM {
                 } break
                 case Instructions.FREE: {
                     const ptr = this.stack.pop(8).as(Float64Array)[0]
-                   this.free(ptr)
+                    this.free(ptr)
                 } break
                 case Instructions.ALLOC_ARR: {
                     const length = this.stack.pop(8).as(Float64Array)[0]
@@ -381,7 +381,7 @@ export class BytecodeVM {
             this.variableStack.write(offset, data)
         }
 
-        const entry: ExecutionContext = {
+        const entry: StackFrame = {
             function: func,
             data: new Uint32Array(this.data.slice(func.offset, func.offset + func.size)),
             pc: 0,
@@ -393,7 +393,7 @@ export class BytecodeVM {
         return entry
     }
 
-    protected makeReturn(entry: ExecutionContext) {
+    protected makeReturn(entry: StackFrame) {
         if (this.stack.length != entry.stackLen) throw new Error("Stack length was not returned to the same value as when the function started (" + this.stack.length + "," + entry.stackLen + ")")
         const referenceOffset = entry.function.arguments.length + entry.function.variables.length
         let returnSize = 0
@@ -417,5 +417,5 @@ export class BytecodeVM {
 }
 
 export namespace BytecodeVM {
-    export type ExternFunction = (ctx: ExecutionContext, vm: BytecodeVM) => void
+    export type ExternFunction = (ctx: StackFrame, vm: BytecodeVM) => void
 }
