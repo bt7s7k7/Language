@@ -146,7 +146,7 @@ if (ast instanceof Diagnostic) {
             rl.resume()
             rl.question("> ", answer => {
                 rl.pause()
-                const data = new TextEncoder().encode(answer + "\x00")
+                const data = new TextEncoder().encode(answer)
                 const ptr = vm.allocate(data.length)
                 vm.storePointer(ptr, MemoryView.from(data.buffer))
                 vm.resume(MemoryView.from(new Float64Array([ptr, data.byteLength]).buffer))

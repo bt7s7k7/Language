@@ -11,7 +11,7 @@ import { Value } from "../Value"
 export class StringConstant extends Value {
     public emit(builder: FunctionIRBuilder) {
         const name = `[${builder.globalIndex}]_string_${builder.nextID()}`
-        const stringData = new TextEncoder().encode(this.value + "\u0000").buffer
+        const stringData = new TextEncoder().encode(this.value).buffer
         builder.registerData(name, stringData, this.span)
 
         builder.pushInstruction(Instructions.DATA_PTR, 0, [name])
