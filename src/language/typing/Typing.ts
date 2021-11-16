@@ -260,7 +260,7 @@ export namespace Typing {
                 if (!type) throw new ParsingError(new Diagnostic("Cannot get type of variable declaration", node.span))
                 if (!(type instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", node.type!.span))
 
-                if (type instanceof ConstExpr) {
+                if (type instanceof ConstExpr || type instanceof Reference) {
                     type = type.type
                 }
 
