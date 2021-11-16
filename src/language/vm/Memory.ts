@@ -73,7 +73,7 @@ export class MemoryView {
     }
 
     public as<T extends AnyTypedArray>(type: AnyTypedArrayCtor<T>) {
-        return new type(this.buffer, this.offset, this.length / type.BYTES_PER_ELEMENT)
+        return new type(this.buffer.slice(this.offset, this.offset + this.length), 0, this.length / type.BYTES_PER_ELEMENT)
     }
 
     public slice(offset: number, size: number) {
