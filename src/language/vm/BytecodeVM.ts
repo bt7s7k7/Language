@@ -126,7 +126,7 @@ export class BytecodeVM {
             const curr = ctx.data[ctx.pc]
             const inst = (curr & 0xffff0000) >>> 16
             const subtype = curr & 0x0000ffff
-            console.log("PC:", ctx.pc)
+            //console.log("PC:", ctx.pc)
             ctx.pc++
 
             switch (inst) {
@@ -134,7 +134,7 @@ export class BytecodeVM {
                     const ref = ctx.data[ctx.pc]
                     ctx.pc++
                     const data = this.variableStack.read(ctx.references[ref], subtype)
-                    console.log("Load:", ref, ctx.references[ref], data)
+                    //console.log("Load:", ref, ctx.references[ref], data)
                     this.stack.push(data)
                 } break
                 case Instructions.STORE: {
@@ -142,11 +142,11 @@ export class BytecodeVM {
                     ctx.pc++
                     const data = this.stack.pop(subtype)
                     this.variableStack.write(ctx.references[ref], data)
-                    console.log("Store:", ref, ctx.references[ref], data)
+                    //console.log("Store:", ref, ctx.references[ref], data)
                 } break
                 case Instructions.RETURN: {
                     const entry = this.controlStack.pop()!
-                    console.log("Return")
+                    //console.log("Return")
                     const returnSize = this.makeReturn(entry)
                     if (this.controlStack.length == 0) {
                         entry.callback?.(this.stack.pop(returnSize))
@@ -161,7 +161,7 @@ export class BytecodeVM {
                         ctx.pc++
                     }
                     const buffer = new Uint32Array(data).buffer.slice(0, subtype)
-                    console.log("Const:", new MemoryView(buffer))
+                    //console.log("Const:", new MemoryView(buffer))
                     this.stack.pushConst(buffer)
                 } break
                 case Instructions.ADD: {
@@ -170,7 +170,7 @@ export class BytecodeVM {
                     const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = a + b
-                    console.log("Add:", a, b, res)
+                    //console.log("Add:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.SUB: {
@@ -179,7 +179,7 @@ export class BytecodeVM {
                     const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = a - b
-                    console.log("Sub:", a, b, res)
+                    //console.log("Sub:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.MUL: {
@@ -188,7 +188,7 @@ export class BytecodeVM {
                     const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = a * b
-                    console.log("Mul:", a, b, res)
+                    //console.log("Mul:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.DIV: {
@@ -197,7 +197,7 @@ export class BytecodeVM {
                     const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = a / b
-                    console.log("Div:", a, b, res)
+                    //console.log("Div:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.MOD: {
@@ -206,7 +206,7 @@ export class BytecodeVM {
                     const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = a % b
-                    console.log("Mod:", a, b, res)
+                    //console.log("Mod:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.EQ: {
@@ -215,7 +215,7 @@ export class BytecodeVM {
                     const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a == b)
-                    console.log("Eq:", a, b, res)
+                    //console.log("Eq:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.LT: {
@@ -224,7 +224,7 @@ export class BytecodeVM {
                     const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a < b)
-                    console.log("Lt:", a, b, res)
+                    //console.log("Lt:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.GT: {
@@ -233,7 +233,7 @@ export class BytecodeVM {
                     const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a > b)
-                    console.log("Gt:", a, b, res)
+                    //console.log("Gt:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.LTE: {
@@ -242,7 +242,7 @@ export class BytecodeVM {
                     const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a <= b)
-                    console.log("Lte:", a, b, res)
+                    //console.log("Lte:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.GTE: {
@@ -251,7 +251,7 @@ export class BytecodeVM {
                     const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a >= b)
-                    console.log("Gte:", a, b, res)
+                    //console.log("Gte:", a, b, res)
                     this.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.BR_FALSE:
@@ -263,15 +263,17 @@ export class BytecodeVM {
                     const predicate = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const label = ctx.function.labels[labelIndex]
                     if (!predicate == !(inst == Instructions.BR_TRUE)) {
-                        console.log("Jump:", label.name)
+                        //console.log("Jump:", label.name)
                         ctx.pc = label.offset
-                    } else console.log("Jump skipped:", label.name)
+                    } else {
+                        //console.log("Jump skipped:", label.name)
+                    }
                 } break
                 case Instructions.BR: {
                     const labelIndex = ctx.data[ctx.pc]
                     ctx.pc++
                     const label = ctx.function.labels[labelIndex]
-                    console.log("Jump:", label.name)
+                    //console.log("Jump:", label.name)
                     ctx.pc = label.offset
                 } break
                 case Instructions.DROP: {
@@ -280,7 +282,7 @@ export class BytecodeVM {
                 case Instructions.CALL: {
                     const funcNumber = ctx.data[ctx.pc]
                     ctx.pc++
-                    console.log("Call:", funcNumber)
+                    //console.log("Call:", funcNumber)
                     ctx = this.makeCall(funcNumber)
                     this.controlStack.push(ctx)
                 } break
@@ -289,7 +291,7 @@ export class BytecodeVM {
                     ctx.pc++
                     const offset = ctx.references[ref]
                     const address = MemoryMap.prefixAddress(offset, "variableStack")
-                    console.log("Varptr:", offset, "->", address)
+                    //console.log("Varptr:", offset, "->", address)
                     this.stack.pushConst(new Float64Array([address]).buffer)
                 } break
                 case Instructions.DATA_PTR: {
@@ -297,19 +299,19 @@ export class BytecodeVM {
                     ctx.pc++
                     const offset = this.config.data[ref].offset
                     const address = MemoryMap.prefixAddress(offset, "data")
-                    console.log("Dataptr:", offset, "->", address)
+                    //console.log("Dataptr:", offset, "->", address)
                     this.stack.pushConst(new Float64Array([address]).buffer)
                 } break
                 case Instructions.STORE_PTR: {
                     const ptr = this.stack.pop(Pointer.size).as(Float64Array)[0]
                     const value = this.stack.pop(subtype)
-                    console.log("Ptr store:", ptr, "=", value)
+                    //console.log("Ptr store:", ptr, "=", value)
                     this.storePointer(ptr, value)
                 } break
                 case Instructions.LOAD_PTR: {
                     const ptr = this.stack.pop(Pointer.size).as(Float64Array)[0]
                     const value = this.loadPointer(ptr, subtype)
-                    console.log("Ptr load:", ptr, "=", value)
+                    //console.log("Ptr load:", ptr, "=", value)
                     this.stack.push(value)
                 } break
                 case Instructions.MEMBER: {
@@ -355,7 +357,7 @@ export class BytecodeVM {
     protected makeCall(index: number) {
         const func = this.config.functions[index]
         if (!func) throw new Error("Function index out of range")
-        console.log("Called function", [func.name])
+        //console.log("Called function", [func.name])
         if (!func) throw unreachable()
         let size = 0
         let offset = this.variableStack.length
