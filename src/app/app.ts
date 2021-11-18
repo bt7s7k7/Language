@@ -65,24 +65,15 @@ const ast = Parser.parse(new SourceFile("<anon>",
     function print(msg: *Number): Void => extern
     function readline(): []Char => extern
 
-    function memcpy(target: []Char, src: []Char, offset: Number) {
-        for (var i = offset; i < target.length && i < src.length + offset; i = i + 1) {
-            target[i] = src[i - offset]
-        }
-    }
-
-    function strcat(a: []Char, b: []Char) {
-        var length = a.length + b.length
-        var dest = []Char.alloc(length)
-        memcpy(dest, a, 0)
-        memcpy(dest, b, a.length)
-        return dest
+    template(T)
+    function sum(a: T, b: T) {
+        return a * b
     }
 
     function main() {
-        var a = readline()
-        var b = readline()
-        var result = strcat(a, b)
+        var a = 5
+        var b = 6
+        var result = sum[Number](a, b)
         print(result)
     }
 

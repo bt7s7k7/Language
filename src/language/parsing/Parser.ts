@@ -1,4 +1,5 @@
 import { unreachable } from "../../comTypes/util"
+import { ASTNode } from "../ast/ASTNode"
 import { BlockNode } from "../ast/nodes/BlockNode"
 import { DeclarationNode } from "../ast/nodes/DeclarationNode"
 import { ExpressionNode } from "../ast/nodes/ExpressionNode"
@@ -12,6 +13,7 @@ import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
 import { StringLiteral } from "../ast/nodes/StringLiteral"
+import { TemplateNode } from "../ast/nodes/TemplateNode"
 import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
 import { WhileNode } from "../ast/nodes/WhileNode"
 import { Diagnostic } from "../Diagnostic"
@@ -110,14 +112,39 @@ export namespace Parser {
             return null
         }
 
+        function parseTemplateDeclaration() {
+            const start = makePos()
+            if (!consume("(")) throw new ParsingFailure("Expected \"(\"")
+            const params = parseEnumerated(() => consumeWord(!!"strict"), ",", ")").map(v => new IdentifierNode(v.span, v.data))
+            return new TemplateNode(start.span(-8), params, null)
+        }
+
         function parseRoot() {
             const rootNode = new RootNode(makePos().span(1))
+            let template: TemplateNode | null = null
+
+            function addChild(node: ASTNode) {
+                if (template) {
+                    template.entity = node
+                    rootNode.addChild(template)
+                    template = null
+                } else {
+                    rootNode.addChild(node)
+                }
+            }
+
             for (; ;) {
                 skipWhitespace()
                 if (willEOF()) break
 
+                if (consume("template")) {
+                    if (template) throw new ParsingFailure("Cannot nest template definitions")
+                    template = parseTemplateDeclaration()
+                    continue
+                }
+
                 if (consume("function")) {
-                    rootNode.addChild(parseFunctionStatement())
+                    addChild(parseFunctionStatement())
                     continue
                 }
 
@@ -127,8 +154,12 @@ export namespace Parser {
             return rootNode
         }
 
-        function consumeWord() {
-            if (!CharClass.isWord(content[index])) return null
+        function consumeWord<T extends boolean = false>(strict?: T): T extends true ? Token<string> : Token<string> | null {
+            if (!CharClass.isWord(content[index])) {
+                if (strict) throw new ParsingFailure("Expected word")
+                // @ts-ignore
+                return null
+            }
             const pos = makePos()
             const start = index
             while (!willEOF() && CharClass.isWord(content[index])) next()

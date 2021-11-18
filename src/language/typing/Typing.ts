@@ -12,6 +12,7 @@ import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
 import { StringLiteral } from "../ast/nodes/StringLiteral"
+import { TemplateNode } from "../ast/nodes/TemplateNode"
 import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
 import { WhileNode } from "../ast/nodes/WhileNode"
 import { Diagnostic } from "../Diagnostic"
@@ -27,6 +28,7 @@ import { Pointer } from "./types/Pointer"
 import { ProgramFunction } from "./types/ProgramFunction"
 import { Reference } from "./types/Reference"
 import { Slice } from "./types/Slice"
+import { TemplatedEntity } from "./types/TemplatedEntity"
 import { normalizeType } from "./util"
 import { Value } from "./Value"
 import { Block } from "./values/Block"
@@ -217,9 +219,16 @@ export namespace Typing {
                 }
 
                 const operator = node.name
-                const handler = globalScope.get("__operator__" + operator)
+                let handler = globalScope.get("__operator__" + operator) as FunctionDefinition
                 if (!(handler instanceof FunctionDefinition)) throw new ParsingError(new Diagnostic(`Cannot find operator "${operator}"`, node.span))
                 const operands = node.children.map(v => parseExpressionNode(v, scope))
+
+                if (node.name == "index" && operands[0] instanceof TemplatedEntity) {
+                    const template = operands[0]
+                    operands.shift()
+                    handler = template.specialization
+                }
+
                 return createInvocation(node.span, handler, operands, scope)
             } else if (node instanceof IfStatementNode) {
                 const predicate = assertValue(parseExpressionNode(node.predicate, scope), node.span)
@@ -305,8 +314,7 @@ export namespace Typing {
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 
-        function parseFunctionDefinition(func: FunctionDefinitionNode, scope: Scope) {
-            const name = func.name
+        function parseFunctionDefinition(func: FunctionDefinitionNode, scope: Scope, name = func.name) {
             let resultType = func.type ? parseExpressionNode(func.type, scope) : null
             if (resultType != null && !(resultType instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", func.type!.span))
 
@@ -348,6 +356,32 @@ export namespace Typing {
             } else {
                 scope.register(name, definition)
             }
+
+            return definition
+        }
+
+        function parseTemplateDefinition(node: TemplateNode, scope: Scope) {
+            if (!node.entity) unreachable()
+
+            if (node.entity instanceof FunctionDefinitionNode) {
+                const name = node.entity.name
+
+                const argNames = node.params.map(v => v.name)
+                scope.register(name, new TemplatedEntity(node.span, name, argNames, (scope, args) => {
+                    const specializedName = name + "<" + args.map(v => v.name).join(", ") + ">"
+                    const memoized = scope.get(specializedName)
+                    if (memoized) return memoized as FunctionDefinition
+
+                    const innerScope = new Scope(scope)
+                    argNames.forEach((v, i) => innerScope.register(v, args[i]))
+                    const definition = parseFunctionDefinition(node.entity as FunctionDefinitionNode, innerScope, specializedName)
+
+                    scope.register(specializedName, definition)
+
+                    return definition
+
+                }))
+            } else throw new ParsingError(new Diagnostic(`Node type ${node.entity.constructor.name} is not suitable for templating`, node.entity.span))
         }
 
         function parseRoot(root: RootNode, scope: Scope) {
@@ -357,16 +391,24 @@ export namespace Typing {
             while (pending.length > 0) {
                 let errors: Diagnostic[] = []
                 for (const node of pending) {
-                    if (node instanceof FunctionDefinitionNode) {
-                        try {
+                    try {
+                        if (node instanceof FunctionDefinitionNode) {
                             parseFunctionDefinition(node, scope)
-                        } catch (err) {
-                            if (err instanceof ParsingError) {
-                                errors.push(...err.diagnostics)
-                                next.push(node)
-                            } else throw err
+                            continue
                         }
-                    } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
+
+                        if (node instanceof TemplateNode) {
+                            parseTemplateDefinition(node, scope)
+                            continue
+                        }
+
+                        throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
+                    } catch (err) {
+                        if (err instanceof ParsingError) {
+                            errors.push(...err.diagnostics)
+                            next.push(node)
+                        } else throw err
+                    }
                 }
 
                 if (next.length == pending.length) {
