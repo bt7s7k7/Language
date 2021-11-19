@@ -13,7 +13,8 @@ import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
 import { StringLiteral } from "../ast/nodes/StringLiteral"
-import { TemplateNode } from "../ast/nodes/TemplateNode"
+import { ImplicitSpecializationStrategy, IMPLICIT_SPECIALIZATION_STRATEGY_TYPES, TemplateNode, TemplateParameter } from "../ast/nodes/TemplateNode"
+import { TupleNode } from "../ast/nodes/TupleNode"
 import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
 import { WhileNode } from "../ast/nodes/WhileNode"
 import { Diagnostic } from "../Diagnostic"
@@ -115,7 +116,25 @@ export namespace Parser {
         function parseTemplateDeclaration() {
             const start = makePos()
             if (!consume("(")) throw new ParsingFailure("Expected \"(\"")
-            const params = parseEnumerated(() => consumeWord(!!"strict"), ",", ")").map(v => new IdentifierNode(v.span, v.data))
+            const params = parseEnumerated((): TemplateParameter => {
+                const name = consumeWord()
+                if (!name) throw new ParsingFailure("Expected template parameter name")
+                skipWhitespace()
+                let strategy: ImplicitSpecializationStrategy | null = null
+                if (consume("is")) {
+                    skipWhitespace()
+                    const type = consumeWord() as Token<ImplicitSpecializationStrategy["type"]>
+                    if (!type) throw new ParsingFailure("Expected ISS name")
+                    if (!IMPLICIT_SPECIALIZATION_STRATEGY_TYPES.includes(type.data)) throw new ParsingFailure("Invalid ISS name")
+                    skipWhitespace()
+                    const argument = parseNumberLiteral()
+
+                    strategy = { type: type.data, index: argument.value }
+                }
+
+                return { span: name.span, name: name.data, strategy }
+            }, ",", ")")
+
             return new TemplateNode(start.span(-8), params, null)
         }
 
@@ -280,6 +299,46 @@ export namespace Parser {
             return new StringLiteral(start.span(index - startIndex), chars.join(""), type)
         }
 
+        function parseNumberLiteral() {
+            const start = makePos()
+            const type =
+                consume("0x") ? "hex" :
+                    consume("0b") ? "bin" :
+                        "dec"
+
+            let src = ""
+            let isDecimal = false
+            if (type == "dec") while (!willEOF() && CharClass.isNumeric(content[index])) { src += content[index]; next() }
+            if (type == "hex") while (!willEOF() && CharClass.isHexDigit(content[index])) { src += content[index]; next() }
+            if (type == "bin") while (!willEOF() && (content[index] == "1" || content[index] == "0")) { src += content[index]; next() }
+
+            if (type == "dec") {
+                if (consume(".")) {
+                    src += "."
+                    isDecimal = true
+                    while (!willEOF() && CharClass.isNumeric(content[index])) { src += content[index]; next() }
+                }
+
+                if (consume("e") || consume("E")) {
+                    src += "e"
+                    isDecimal = true
+                    if (consume("+")) src += "+"
+                    else if (consume("-")) src += "-"
+                    while (!willEOF() && CharClass.isNumeric(content[index])) { src += content[index]; next() }
+                }
+            }
+
+            let subtype: NumberLiteral["type"] = "number"
+
+            if (consume("c")) subtype = "char"
+
+            return new NumberLiteral(start.span(src.length),
+                type == "dec" ? (isDecimal ? parseFloat(src) : parseInt(src))
+                    : parseInt(src, type == "hex" ? 16 : 2),
+                subtype
+            )
+        }
+
         function parseExpression(barrier: string | null = null) {
             skipWhitespace()
             const ret = new ExpressionNode(makePos().span(1))
@@ -368,42 +427,7 @@ export namespace Parser {
                     }
 
                     if (CharClass.isNumeric(content[index])) {
-                        const type =
-                            consume("0x") ? "hex" :
-                                consume("0b") ? "bin" :
-                                    "dec"
-
-                        let src = ""
-                        let isDecimal = false
-                        if (type == "dec") while (!willEOF() && CharClass.isNumeric(content[index])) { src += content[index]; next() }
-                        if (type == "hex") while (!willEOF() && CharClass.isHexDigit(content[index])) { src += content[index]; next() }
-                        if (type == "bin") while (!willEOF() && (content[index] == "1" || content[index] == "0")) { src += content[index]; next() }
-
-                        if (type == "dec") {
-                            if (consume(".")) {
-                                src += "."
-                                isDecimal = true
-                                while (!willEOF() && CharClass.isNumeric(content[index])) { src += content[index]; next() }
-                            }
-
-                            if (consume("e") || consume("E")) {
-                                src += "e"
-                                isDecimal = true
-                                if (consume("+")) src += "+"
-                                else if (consume("-")) src += "-"
-                                while (!willEOF() && CharClass.isNumeric(content[index])) { src += content[index]; next() }
-                            }
-                        }
-
-                        let subtype: NumberLiteral["type"] = "number"
-
-                        if (consume("c")) subtype = "char"
-
-                        ret.addChild(new NumberLiteral(start.span(src.length),
-                            type == "dec" ? (isDecimal ? parseFloat(src) : parseInt(src))
-                                : parseInt(src, type == "hex" ? 16 : 2),
-                            subtype
-                        ))
+                        ret.addChild(parseNumberLiteral())
                         hasTarget = true
                         continue
                     }
@@ -420,6 +444,13 @@ export namespace Parser {
                     if (consume("(")) {
                         ret.addChild(parseExpression())
                         if (!consume(")")) throw new ParsingFailure(`Expected ")"`)
+                        hasTarget = true
+                        continue
+                    }
+
+                    if (consume(".[")) {
+                        const members = parseEnumerated(() => parseExpression(), ",", "]")
+                        ret.addChild(new TupleNode(start.span(2), members))
                         hasTarget = true
                         continue
                     }

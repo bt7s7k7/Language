@@ -14,6 +14,7 @@ import { Void } from "../language/typing/types/base"
 import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
 import { Pointer } from "../language/typing/types/Pointer"
 import { Slice } from "../language/typing/types/Slice"
+import { Tuple } from "../language/typing/types/Tuple"
 import { Typing } from "../language/typing/Typing"
 import { stringifySpan } from "../language/util"
 import { BytecodeVM } from "../language/vm/BytecodeVM"
@@ -32,13 +33,7 @@ Position.prototype._s = Position.prototype[inspect.custom] = function (this: Pos
 
 // @ts-ignore
 MemoryView.prototype[inspect.custom] = function (this: MemoryView) {
-    let represent = ""
-    if (this.length == 1) represent += ":uint8(" + this.as(Uint8Array)[0] + ")"
-    if (this.length == 1) represent += ":char(" + JSON.stringify(String.fromCharCode(this.as(Uint8Array)[0])).slice(1, -1) + ")"
-    if (this.length == 2) represent += ":uint16(" + this.as(Uint16Array)[0] + ")"
-    if (this.length == 4) represent += ":uint32(" + this.as(Uint32Array)[0] + ")"
-    if (this.length == 8) represent += ":float64(" + this.as(Float64Array)[0] + ")"
-    return chalk.yellow(`[${this.length}]${[...this.getUint8Array()].map(v => v.toString(16).padStart(2, "0")).join("").replace(/^0+/, "")}${represent}`)
+    return chalk.yellow(this.toString())
 }
 
 const rl = createInterface(process.stdin, process.stdout)
@@ -59,22 +54,11 @@ const ast = Parser.parse(new SourceFile("<anon>",
     ` */
     /* javascript */`
 
-    function print(msg: Char): Void => extern
-    function print(msg: []Char): Void => extern
-    function print(msg: Number): Void => extern
-    function print(msg: *Number): Void => extern
-    function readline(): []Char => extern
-
-    template(T)
-    function sum(a: T, b: T) {
-        return a * b
-    }
+    template(T is any 1)
+    function printf(format: []Char, args: T): Void => extern
 
     function main() {
-        var a = 5
-        var b = 6
-        var result = sum[Number](a, b)
-        print(result)
+        printf("Hello {0} number {1}", .["world", 9])
     }
 
     `
@@ -115,6 +99,9 @@ if (ast instanceof Diagnostic) {
     globalScope.register("__operator__as_slice", new FunctionDefinition(Span.native, "__operator__as_slice").addOverload(Slice.AS_SLICE_OPERATOR))
     globalScope.register("__operator__index", new FunctionDefinition(Span.native, "__operator__index").addOverload(Slice.INDEX_OPERATOR))
 
+    globalScope.register("__createTuple", new FunctionDefinition(Span.native, "__createTuple").addOverload(Tuple.CREATE_TUPLE))
+    globalScope.register("Tuple", new FunctionDefinition(Span.native, "Tuple").addOverload(Tuple.TYPE))
+
     const program = Typing.parse(ast, globalScope)
     if (program instanceof Array) {
         console.log(inspect(ast, undefined, Infinity, true))
@@ -123,7 +110,7 @@ if (ast instanceof Diagnostic) {
         console.log(inspect(program, undefined, Infinity, true))
         const emission = Emitter.emit(program)
         console.log(inspect(emission, undefined, Infinity, true))
-        const assembler = new Assembler()
+        const assembler = new Assembler(program)
         for (const symbol of emission.values()) {
             assembler.addFunction(symbol)
         }
@@ -148,6 +135,40 @@ if (ast instanceof Diagnostic) {
 
             vm.resume(MemoryView.empty)
         })
+
+        for (const name of build.header.debug.templates["printf"].specializations) {
+            const specialization = build.header.debug.functions[name]
+            const typeName = specialization.args[1].type
+            const type = build.header.debug.types[typeName]
+            const props: { type: string, offset: number }[] = type.detail.shape
+
+            vm.externFunctions.set(name, (ctx, vm) => {
+                const decoder = new TextDecoder()
+                function loadString(slice: MemoryView) {
+                    const [ptr, size] = slice.as(Float64Array)
+                    return decoder.decode(vm.loadPointer(ptr, size).as(Uint8Array))
+                }
+
+                const tuple = vm.variableStack.read(ctx.references[1], ctx.function.arguments[1].size)
+
+                const format = loadString(vm.variableStack.read(ctx.references[0], ctx.function.arguments[0].size))
+                    .replace(/\{(\d+)\}/g, (_, i) => {
+                        const prop = props[i]
+                        const type = build.header.debug.types[prop.type]
+                        if (!prop) return chalk.redBright(`{${i}}`)
+
+                        const value = tuple.slice(prop.offset, type.size)
+
+                        if (type.name == "[]Char") {
+                            return chalk.greenBright(JSON.stringify(loadString(value)))
+                        }
+
+                        return chalk.yellowBright(value.toString())
+                    })
+
+                console.log(format)
+            })
+        }
 
         vm.externFunctions.set("readline(): []Char", (ctx, vm) => {
             rl.resume()

@@ -1,4 +1,5 @@
 import exp = require("constants")
+import { DebugInfo } from "../../DebugInfo"
 import { Diagnostic } from "../../Diagnostic"
 import { Span } from "../../Span"
 import { Type } from "../Type"
@@ -7,7 +8,7 @@ import { ConstExpr } from "./ConstExpr"
 import { Reference } from "./Reference"
 
 export abstract class SpecificFunction extends Type {
-    public abstract match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic
+    public abstract match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic | Diagnostic[]
 
     constructor(
         span: Span,
@@ -29,6 +30,7 @@ export namespace SpecificFunction {
     export interface Context {
         scope: Typing.Scope
         rootScope: Typing.Scope
+        debug: DebugInfo.Builder
     }
 
     export interface Signature {

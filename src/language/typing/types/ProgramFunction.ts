@@ -8,6 +8,10 @@ export class ProgramFunction extends SpecificFunction {
         const error = SpecificFunction.testArguments(span, this.args, args)
         if (error) return error
 
+        return this.getSignature()
+    }
+
+    public getSignature(): SpecificFunction.Signature {
         return {
             target: this,
             arguments: this.args,
@@ -23,7 +27,7 @@ export class ProgramFunction extends SpecificFunction {
         span: Span, name: string,
         public result: Type,
         public readonly args: ProgramFunction.Argument[],
-        public body: Value | "extern"
+        public body: Value | "extern",
     ) { super(span, ProgramFunction.generateName(name, args, result)) }
 
     public static generateName(basename: string, args: ProgramFunction.Argument[], result: Type) {

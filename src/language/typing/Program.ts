@@ -1,3 +1,4 @@
+import { DebugInfo } from "../DebugInfo"
 import { Type } from "./Type"
 import { Value } from "./Value"
 
@@ -12,6 +13,7 @@ export class Program {
     }
 
     constructor(
-        public readonly entries: Map<string, Value | Type>
+        public readonly entries: Map<string, Value | Type>,
+        public readonly debug: DebugInfo.Builder
     ) { }
 }

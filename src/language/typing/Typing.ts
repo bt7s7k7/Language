@@ -13,8 +13,10 @@ import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
 import { StringLiteral } from "../ast/nodes/StringLiteral"
 import { TemplateNode } from "../ast/nodes/TemplateNode"
+import { TupleNode } from "../ast/nodes/TupleNode"
 import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
 import { WhileNode } from "../ast/nodes/WhileNode"
+import { DebugInfo } from "../DebugInfo"
 import { Diagnostic } from "../Diagnostic"
 import { Span } from "../Span"
 import { Primitives } from "./Primitives"
@@ -132,6 +134,7 @@ export namespace Typing {
 
     export function parse(rootNode: RootNode, globalScope: Scope) {
         const rootScope = globalScope
+        const debug = new DebugInfo.Builder()
 
         function createConstant(constexpr: ConstExpr) {
             if (constexpr.type == Primitives.Number.TYPE) return new Primitives.Number.Constant(constexpr.span, constexpr.value, constexpr)
@@ -141,7 +144,7 @@ export namespace Typing {
 
         function createInvocation(span: Span, handler: FunctionDefinition, operands: (Value | Type)[], scope: Scope) {
             const args = operands.map(v => ({ span: v.span, type: v instanceof Value ? v.type : new ConstExpr(v.span, Type.TYPE, v) }))
-            const overload = handler.findOverload(span, args, { scope, rootScope })
+            const overload = handler.findOverload(span, args, { scope, rootScope, debug })
             if (overload instanceof Array) throw new ParsingError(new Diagnostic(`Cannot find overload for function "${handler.name}"`, span), ...overload)
 
             return overload.result instanceof ConstExpr ? createConstant(overload.result)
@@ -288,6 +291,7 @@ export namespace Typing {
                     if (target instanceof FunctionDefinition) return target
                     if (target instanceof Type) {
                         const invokeFunction = scope.getProperty(target, "static !invoke")
+                        if (!invokeFunction) throw new ParsingError(new Diagnostic("Target is not invocable", node.span))
                         if (!(invokeFunction instanceof FunctionDefinition)) unreachable()
                         if (invokeFunction) {
                             return invokeFunction
@@ -311,12 +315,16 @@ export namespace Typing {
                 })()
 
                 return createInvocation(node.span, func, operands, scope)
+            } else if (node instanceof TupleNode) {
+                const operands = node.elements.map(v => parseExpressionNode(v, scope))
+                const handler = scope.get("__createTuple") as FunctionDefinition
+                return createInvocation(node.span, handler, operands, scope)
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 
         function parseFunctionDefinition(func: FunctionDefinitionNode, scope: Scope, name = func.name) {
             let resultType = func.type ? parseExpressionNode(func.type, scope) : null
-            if (resultType != null && !(resultType instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", func.type!.span))
+            if (resultType != null && !(resultType instanceof Type)) throw new ParsingError(new Diagnostic("Expected type" + resultType.type.name, func.type!.span))
 
             const construct = new FunctionConstruct(resultType)
             const innerScope = new Scope(scope, construct)
@@ -350,6 +358,7 @@ export namespace Typing {
             self.body = body
             self.result = ConstExpr.removeConstexpr(Reference.dereference(self.result))
             self.regenerateName(definition.name)
+            debug.func(self.getSignature())
 
             if (scope.get(name) instanceof FunctionDefinition) {
                 (scope.get(name) as FunctionDefinition).addOverload(self)
@@ -363,24 +372,40 @@ export namespace Typing {
         function parseTemplateDefinition(node: TemplateNode, scope: Scope) {
             if (!node.entity) unreachable()
 
+            const implicit = !!node.params[0]?.strategy
+            if (implicit) {
+                for (const param of node.params) {
+                    if (!param.strategy) {
+                        throw new ParsingError(new Diagnostic("Template with ISS must have a strategy for all parameters", param.span))
+                    }
+                }
+            }
+
             if (node.entity instanceof FunctionDefinitionNode) {
                 const name = node.entity.name
+                debug.template(name)
 
-                const argNames = node.params.map(v => v.name)
-                scope.register(name, new TemplatedEntity(node.span, name, argNames, (scope, args) => {
+                const template = new TemplatedEntity(node.span, name, node.params, implicit, (scope, args) => {
                     const specializedName = name + "<" + args.map(v => v.name).join(", ") + ">"
                     const memoized = scope.get(specializedName)
-                    if (memoized) return memoized as FunctionDefinition
+                    if (memoized)
+                        return memoized as FunctionDefinition
 
                     const innerScope = new Scope(scope)
-                    argNames.forEach((v, i) => innerScope.register(v, args[i]))
+                    node.params.forEach((v, i) => innerScope.register(v.name, args[i]))
                     const definition = parseFunctionDefinition(node.entity as FunctionDefinitionNode, innerScope, specializedName)
 
                     scope.register(specializedName, definition)
 
                     return definition
 
-                }))
+                })
+
+                scope.register(name, template)
+
+                scope.registerMany(name, {
+                    "static !invoke": template.implicitSpecialization
+                })
             } else throw new ParsingError(new Diagnostic(`Node type ${node.entity.constructor.name} is not suitable for templating`, node.entity.span))
         }
 
@@ -430,6 +455,6 @@ export namespace Typing {
             }
         }
 
-        return new Program(rootScope.map)
+        return new Program(rootScope.map, debug)
     }
 }

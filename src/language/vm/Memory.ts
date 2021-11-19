@@ -90,6 +90,17 @@ export class MemoryView {
         return new MemoryView(copyArray.buffer, 0, copyArray.length)
     }
 
+    public toString() {
+        let represent = ""
+        if (this.length == 1) represent += ":uint8(" + this.as(Uint8Array)[0] + ")"
+        if (this.length == 1) represent += ":char(" + JSON.stringify(String.fromCharCode(this.as(Uint8Array)[0])).slice(1, -1) + ")"
+        if (this.length == 2) represent += ":uint16(" + this.as(Uint16Array)[0] + ")"
+        if (this.length == 4) represent += ":uint32(" + this.as(Uint32Array)[0] + ")"
+        if (this.length == 8) represent += ":float64(" + this.as(Float64Array)[0] + ")"
+
+        return `[${this.length}]${[...this.getUint8Array()].map(v => v.toString(16).padStart(2, "0")).join("").replace(/^0+/, "")}${represent}`
+    }
+
     protected array: Uint8Array | null = null
 
     constructor(

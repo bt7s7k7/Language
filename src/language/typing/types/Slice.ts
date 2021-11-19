@@ -1,4 +1,5 @@
 import { unreachable } from "../../../comTypes/util"
+import { DebugInfo } from "../../DebugInfo"
 import { Diagnostic } from "../../Diagnostic"
 import { EmissionUtil } from "../../emission/EmissionUtil"
 import { FunctionIRBuilder } from "../../emission/FunctionIRBuilder"
@@ -42,6 +43,12 @@ function registerSliceMethods(slice: Slice, scope: Typing.Scope) {
 export class Slice extends InstanceType {
     public assignableTo(other: Type): boolean {
         return super.assignableTo(other) || (other instanceof Slice && this.type.assignableTo(other.type))
+    }
+
+    public getDetail(debug: DebugInfo.Builder) {
+        return {
+            type: debug.type(this.type).name
+        }
     }
 
     constructor(

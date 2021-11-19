@@ -1,4 +1,5 @@
 import { unreachable } from "../../comTypes/util"
+import { Program } from "../typing/Program"
 import { ExecutableHeader } from "../vm/ExecutableHeader"
 import { FunctionIR, VariableIR } from "./FunctionIR"
 
@@ -6,7 +7,8 @@ export class Assembler {
     public readonly chunks: ArrayBuffer[] = []
     public readonly header: ExecutableHeader = {
         data: [],
-        functions: []
+        functions: [],
+        debug: this.program.debug.build()
     }
     public length = 0
 
@@ -117,4 +119,8 @@ export class Assembler {
     public build() {
         return { header: this.header, data: this.concatData() }
     }
+
+    constructor(
+        public readonly program: Program
+    ) { }
 }

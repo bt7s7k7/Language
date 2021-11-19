@@ -12,6 +12,8 @@ export class FunctionDefinition extends Type {
             const match = overload.match(span, args, context)
             if (match instanceof Diagnostic) {
                 diagnostics.push(match)
+            } else if (match instanceof Array) {
+                diagnostics.push(...match)
             } else {
                 return match
             }
