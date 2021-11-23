@@ -136,10 +136,10 @@ if (ast instanceof Diagnostic) {
             vm.resume(MemoryView.empty)
         })
 
-        for (const name of build.header.debug.templates["printf"].specializations) {
-            const specialization = build.header.debug.functions[name]
+        for (const name of build.header.reflection.templates["printf"].specializations) {
+            const specialization = build.header.reflection.functions[name]
             const typeName = specialization.args[1].type
-            const type = build.header.debug.types[typeName]
+            const type = build.header.reflection.types[typeName]
             const props: { type: string, offset: number }[] = type.detail.shape
 
             vm.externFunctions.set(name, (ctx, vm) => {
@@ -154,7 +154,7 @@ if (ast instanceof Diagnostic) {
                 const format = loadString(vm.variableStack.read(ctx.references[0], ctx.function.arguments[0].size))
                     .replace(/\{(\d+)\}/g, (_, i) => {
                         const prop = props[i]
-                        const type = build.header.debug.types[prop.type]
+                        const type = build.header.reflection.types[prop.type]
                         if (!prop) return chalk.redBright(`{${i}}`)
 
                         const value = tuple.slice(prop.offset, type.size)

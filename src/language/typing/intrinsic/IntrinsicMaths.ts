@@ -1,13 +1,10 @@
-import exp = require("constants")
 import { Diagnostic } from "../../Diagnostic"
 import { EmissionUtil } from "../../emission/EmissionUtil"
 import { FunctionIRBuilder } from "../../emission/FunctionIRBuilder"
 import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
 import { Primitives } from "../Primitives"
-import { Type } from "../Type"
 import { Never } from "../types/base"
-import { ConstExpr } from "../types/ConstExpr"
 import { isRefValue, Reference } from "../types/Reference"
 import { SpecificFunction } from "../types/SpecificFunction"
 import { normalizeType } from "../util"

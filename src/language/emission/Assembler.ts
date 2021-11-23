@@ -8,7 +8,7 @@ export class Assembler {
     public readonly header: ExecutableHeader = {
         data: [],
         functions: [],
-        debug: this.program.debug.build()
+        reflection: this.program.debug.build()
     }
     public length = 0
 

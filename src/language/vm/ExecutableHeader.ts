@@ -3,7 +3,7 @@ import { DebugInfo } from "../DebugInfo"
 export interface ExecutableHeader {
     functions: ExecutableHeader.Function[]
     data: ExecutableHeader.Data[]
-    debug: DebugInfo
+    reflection: DebugInfo
 }
 
 export namespace ExecutableHeader {

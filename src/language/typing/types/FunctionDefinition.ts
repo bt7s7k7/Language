@@ -4,8 +4,6 @@ import { Type } from "../Type"
 import { SpecificFunction } from "./SpecificFunction"
 
 export class FunctionDefinition extends Type {
-    public canInstance() { return false }
-    public getName() { return this.name }
     public findOverload(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context) {
         let diagnostics = []
         for (const overload of this.overloads) {

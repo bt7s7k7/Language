@@ -1,4 +1,5 @@
 import { TextEncoder } from "util"
+import { EmissionUtil } from "../../emission/EmissionUtil"
 import { FunctionIRBuilder } from "../../emission/FunctionIRBuilder"
 import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
@@ -15,7 +16,7 @@ export class StringConstant extends Value {
         builder.registerData(name, stringData, this.span)
 
         builder.pushInstruction(Instructions.DATA_PTR, 0, [name])
-        new Primitives.Number.Constant(Span.native, stringData.byteLength).emit(builder)
+        EmissionUtil.emitConstant(builder, new Float64Array([stringData.byteLength]).buffer)
 
         return Pointer.size + Primitives.Number.TYPE.size
     }

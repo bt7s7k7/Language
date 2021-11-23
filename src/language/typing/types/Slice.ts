@@ -102,7 +102,7 @@ export namespace Slice {
             builder.pushInstruction(Instructions.STORE, sliceSize, [dataVariable])
 
             builder.pushInstruction(Instructions.VAR_PTR, 0, [dataVariable])
-            const lengthPropSize = new Primitives.Number.Constant(Span.native, sliceLength).emit(builder)
+            const lengthPropSize = EmissionUtil.emitConstant(builder, new Float64Array([sliceLength]).buffer)
 
             return lengthPropSize + Slice.size
         }
@@ -129,7 +129,7 @@ export namespace Slice {
             const { dataVariable, sliceSize, sliceLength } = createLocalSlice(invocation.span, builder, sizeArgument.value, this.sliceType.type)
 
             builder.pushInstruction(Instructions.VAR_PTR, 0, [dataVariable])
-            const lengthPropSize = new Primitives.Number.Constant(Span.native, sliceLength).emit(builder)
+            const lengthPropSize = EmissionUtil.emitConstant(builder, new Float64Array([sliceLength]).buffer)
 
             return lengthPropSize + Slice.size
         }
@@ -138,8 +138,8 @@ export namespace Slice {
     }
 
     export function emitConstant(builder: FunctionIRBuilder, ptr: number, size: number) {
-        return new Primitives.Number.Constant(Span.native, ptr).emit(builder)
-            + new Primitives.Number.Constant(Span.native, size).emit(builder)
+        return EmissionUtil.emitConstant(builder, new Float64Array([ptr]).buffer)
+            + EmissionUtil.emitConstant(builder, new Float64Array([size]).buffer)
     }
 
     export const INDEX_OPERATOR = new class SliceIndexOperator extends IntrinsicFunction implements IIntrinsicRefFunction {
@@ -181,7 +181,7 @@ export namespace Slice {
             EmissionUtil.safeEmit(builder, Slice.size, invocation.args[0])
             builder.pushInstruction(Instructions.MEMBER, Slice.size, [0, Primitives.Number.TYPE.size])
             EmissionUtil.safeEmit(builder, Primitives.Number.TYPE.size, invocation.args[1])
-            new Primitives.Number.Constant(Span.native, type.size).emit(builder)
+            EmissionUtil.emitConstant(builder, new Float64Array([type.size]).buffer)
             builder.pushInstruction(Instructions.MUL, Instructions.Types.FLOAT64)
             builder.pushInstruction(Instructions.ADD, Instructions.Types.FLOAT64)
         }

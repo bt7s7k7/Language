@@ -22,7 +22,6 @@ import { Position } from "../Position"
 import { CharClass } from "./CharClass"
 import { SourceFile } from "./SourceFile"
 import { Token } from "./Token"
-import exp = require("constants")
 
 class ParsingFailure extends Error {
     public name = "ParsingFailure"

@@ -1,5 +1,3 @@
-import { EOPNOTSUPP } from "constants"
-import { unreachable } from "../../comTypes/util"
 import { Span } from "../Span"
 import { ExecutableHeader } from "../vm/ExecutableHeader"
 import { AnyInstructionIR } from "./InstructionIR"

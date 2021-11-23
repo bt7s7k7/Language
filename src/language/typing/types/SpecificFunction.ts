@@ -1,4 +1,3 @@
-import exp = require("constants")
 import { DebugInfo } from "../../DebugInfo"
 import { Diagnostic } from "../../Diagnostic"
 import { Span } from "../../Span"
