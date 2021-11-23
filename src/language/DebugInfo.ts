@@ -59,6 +59,8 @@ export namespace DebugInfo {
                 specializations: []
             })), {
                 addSpecialization(func: SpecificFunction.Signature) {
+                    if (this.specializations.includes(func.target.name)) return
+
                     const info = self.func(func)
                     this.specializations.push(info.name)
                     info.setTemplate(this.name)
