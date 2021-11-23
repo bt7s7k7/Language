@@ -102,9 +102,9 @@ export namespace Slice {
             builder.pushInstruction(Instructions.STORE, sliceSize, [dataVariable])
 
             builder.pushInstruction(Instructions.VAR_PTR, 0, [dataVariable])
-            const lengthPropSize = EmissionUtil.emitConstant(builder, new Float64Array([sliceLength]).buffer)
+            EmissionUtil.emitConstant(builder, new Float64Array([sliceLength]).buffer)
 
-            return lengthPropSize + Slice.size
+            return Slice.size
         }
 
         constructor(public readonly sliceType: Slice) { super(Span.native, "__slice_ctor") }
