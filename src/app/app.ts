@@ -167,6 +167,7 @@ if (ast instanceof Diagnostic) {
                     })
 
                 console.log(format)
+                vm.resume(MemoryView.empty)
             })
         }
 
