@@ -336,8 +336,14 @@ export namespace Typing {
                 if (!typeExpr) throw new ParsingError(new Diagnostic("Missing argument type", argument.span))
                 if (argument.value) throw unreachable() // TODO: Implement default arguments
 
-                const type = parseExpressionNode(typeExpr, innerScope)
-                if (!(type instanceof InstanceType)) throw new ParsingError(new Diagnostic("Expected type", typeExpr.span), new Diagnostic("Declared here", type.span))
+                let type = parseExpressionNode(typeExpr, innerScope)
+                if (!(type instanceof InstanceType)) {
+                    if (type instanceof ConstExpr && type.type instanceof InstanceType) {
+                        type = type.type
+                    } else {
+                        throw new ParsingError(new Diagnostic("Expected type", typeExpr.span), new Diagnostic("Declared here", type.span))
+                    }
+                }
 
                 args.push({ type, name, span: argument.span })
                 innerScope.register(name, new Variable(argument.span, type, name))

@@ -15,7 +15,7 @@ class SpecializationFunction extends SpecificFunction {
     public match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
         if (args.length != this.template.params.length) return new Diagnostic(`Template expected ${this.template.params.length} arguments, but ${args.length} provided`, span)
 
-        const result = this.template.specializationFactory(context.rootScope, args.map(v => v.type instanceof ConstExpr ? v.type.value : v.type))
+        const result = this.template.specializationFactory(context.rootScope, args.map(v => v.type instanceof ConstExpr && v.type == Type.TYPE ? v.type.value : v.type))
 
         return {
             target: this,
