@@ -10,7 +10,7 @@ import { Position } from "../language/Position"
 import { Span } from "../language/Span"
 import { IntrinsicMaths } from "../language/typing/intrinsic/IntrinsicMaths"
 import { Primitives } from "../language/typing/Primitives"
-import { Void } from "../language/typing/types/base"
+import { REINTERPRET_OPERATOR, Void } from "../language/typing/types/base"
 import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
 import { Pointer } from "../language/typing/types/Pointer"
 import { Slice } from "../language/typing/types/Slice"
@@ -58,7 +58,11 @@ const ast = Parser.parse(new SourceFile("<anon>",
     function printf(format: []Char, args: T): Void => extern
 
     function main() {
-        printf("Hello {0} number {1}", .["world", 9])
+        var slice = []Number(5, 10)
+        var ptr = &slice[0]
+        printf("Original value: {0}", .[ptr.*])
+        ptr = (ptr!as(Number) + 8)!as(*Number)
+        printf("New value: {0}", .[ptr.*])
     }
 
     `
@@ -101,6 +105,8 @@ if (ast instanceof Diagnostic) {
 
     globalScope.register("__createTuple", new FunctionDefinition(Span.native, "__createTuple").addOverload(Tuple.CREATE_TUPLE))
     globalScope.register("Tuple", new FunctionDefinition(Span.native, "Tuple").addOverload(Tuple.TYPE))
+
+    globalScope.register("__operator__reinterpret", new FunctionDefinition(Span.native, "__operator__reinterpret").addOverload(REINTERPRET_OPERATOR))
 
     const program = Typing.parse(ast, globalScope)
     if (program instanceof Array) {
