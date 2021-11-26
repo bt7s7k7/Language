@@ -31,6 +31,10 @@ export namespace DebugInfo {
                 setDetail(detail: any) {
                     this.detail = detail
                     return this
+                },
+                setSize(size: number) {
+                    this.size = size
+                    return this
                 }
             })
         }

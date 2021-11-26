@@ -123,7 +123,7 @@ export namespace Typing {
 
         public registerMany(namespace: string | null, values: Record<string, Value | Type>) {
             for (const [key, value] of Object.entries(values)) {
-                const name = namespace ? namespace + "." + key : key
+                const name = key ? (namespace ? namespace + "." + key : key) : (namespace ?? unreachable())
                 this.register(name, value)
             }
         }
@@ -426,20 +426,25 @@ export namespace Typing {
         function parseStruct(namespace: string, struct: StructNode, scope: Scope) {
             let offset = 0
             const properties: MemberAccess.Property[] = []
+            const type = new Struct(struct.span, namespace)
+            const innerScope = new Scope(scope)
+            innerScope.register(namespace, type)
 
             for (const propertyNode of struct.properties) {
-                const type = parseExpressionNode(propertyNode.type, scope)
+                const type = parseExpressionNode(propertyNode.type, innerScope)
                 if (!(type instanceof InstanceType)) throw new ParsingError(new Diagnostic("Expected type", type.span))
+                if (type.size == Type.NOT_INSTANTIABLE) throw new ParsingError(new Diagnostic(`Type "${type.name}" is not instantiable`, propertyNode.type.span))
                 const property = new MemberAccess.Property(propertyNode.span, propertyNode.name, type, offset)
                 offset += type.size
                 properties.push(property)
 
-                scope.register(namespace + "." + property.name, property)
             }
 
-            const type = new Struct(struct.span, namespace, offset, properties)
-            debug.type(type)
-            scope.register(namespace, type)
+            type.finalize(properties, offset, debug)
+            scope.registerMany(namespace, {
+                "": type,
+                ...Object.fromEntries(properties.map(v => [v.name, v]))
+            })
         }
 
         function parseRoot(root: RootNode, scope: Scope) {

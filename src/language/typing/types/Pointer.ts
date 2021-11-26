@@ -49,6 +49,7 @@ export namespace Pointer {
 
             context.scope.runInitializer(pointerType.name, () => {
                 registerPointerMethods(pointerType, context.rootScope)
+                context.debug.type(pointerType)
             })
 
             return {
@@ -67,11 +68,17 @@ export namespace Pointer {
             const target = [{ name: "value", type: new Reference(type) }]
             const error = SpecificFunction.testArguments(span, target, args)
             if (error) return error
+            const pointerType = new Pointer(type)
+
+            context.scope.runInitializer(pointerType.name, () => {
+                registerPointerMethods(pointerType, context.rootScope)
+                context.debug.type(pointerType)
+            })
 
             return {
                 target: this,
                 arguments: target,
-                result: new Pointer(type)
+                result: pointerType
             }
         }
 
@@ -124,6 +131,8 @@ export namespace Pointer {
         public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
             const error = SpecificFunction.testArguments(span, [], args)
             if (error) return error
+
+            if (this.pointerType.type.size == Type.NOT_INSTANTIABLE) throw new Error(`Type "${this.pointerType.type.name}" is not instantiable`)
 
             return {
                 arguments: [],

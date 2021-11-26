@@ -1,6 +1,7 @@
 import { FunctionIRBuilder } from "../../emission/FunctionIRBuilder"
 import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
+import { Type } from "../Type"
 import { IRefValue, Reference } from "../types/Reference"
 import { Value } from "../Value"
 import { Variable } from "./Variable"
@@ -33,5 +34,8 @@ export class VariableDereference extends Value implements IRefValue {
         span: Span,
         public readonly variable: Variable,
         public readonly accessType: "declaration" | "construction" | "dereference" = "dereference"
-    ) { super(span, new Reference(variable.type)) }
+    ) {
+        super(span, new Reference(variable.type))
+        if (variable.type.size == Type.NOT_INSTANTIABLE) throw new Error(`Type "${variable.type.name}" is not instantiable`)
+    }
 }

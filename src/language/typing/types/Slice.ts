@@ -20,6 +20,7 @@ import { IIntrinsicRefFunction, Reference } from "./Reference"
 import { SpecificFunction } from "./SpecificFunction"
 
 function createLocalSlice(span: Span, builder: FunctionIRBuilder, length: number, type: Type) {
+    if (type.size == Type.NOT_INSTANTIABLE) throw new Error(`Type "${type.name}" is not instantiable`)
     const sliceLength = length
     const elementSize = type.size
     const sliceSize = elementSize * sliceLength

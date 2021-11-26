@@ -60,17 +60,15 @@ const ast = Parser.parse(new SourceFile("<anon>",
 
     namespace Foo {
         struct {
-            a: Number
-            b: Tuple(Number, Number)
+            next: *Foo
         }
     }
 
     function main() {
         var foo: Foo
-        foo.a = 10
-        foo.b.item0 = 5
+        foo.next = *Foo.alloc()
 
-        printf("Foo: {0}", .[foo])
+        printf("Foo: {0} {1}", .[foo, foo.next.*])
     }
 
     `
