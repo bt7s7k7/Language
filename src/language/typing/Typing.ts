@@ -7,11 +7,13 @@ import { FunctionDefinitionNode } from "../ast/nodes/FunctionDefinitionNode"
 import { IdentifierNode } from "../ast/nodes/IdentifierNode"
 import { IfStatementNode } from "../ast/nodes/IfStatementNode"
 import { InvocationNode } from "../ast/nodes/InvocationNode"
+import { NamespaceNode } from "../ast/nodes/NamespaceNode"
 import { NumberLiteral } from "../ast/nodes/NumberLiteral"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
 import { StringLiteral } from "../ast/nodes/StringLiteral"
+import { StructNode } from "../ast/nodes/StructNode"
 import { TemplateNode } from "../ast/nodes/TemplateNode"
 import { TupleNode } from "../ast/nodes/TupleNode"
 import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
@@ -30,6 +32,7 @@ import { Pointer } from "./types/Pointer"
 import { ProgramFunction } from "./types/ProgramFunction"
 import { Reference } from "./types/Reference"
 import { Slice } from "./types/Slice"
+import { Struct } from "./types/Struct"
 import { TemplatedEntity } from "./types/TemplatedEntity"
 import { normalizeType } from "./util"
 import { Value } from "./Value"
@@ -55,6 +58,11 @@ class ParsingError extends Error {
         super()
         this.diagnostics = diagnostics
     }
+}
+
+interface QueuedNode {
+    node: ASTNode
+    namespace: string
 }
 
 function notAssignable(a: Type, b: Type, span: Span) {
@@ -415,13 +423,34 @@ export namespace Typing {
             } else throw new ParsingError(new Diagnostic(`Node type ${node.entity.constructor.name} is not suitable for templating`, node.entity.span))
         }
 
+        function parseStruct(namespace: string, struct: StructNode, scope: Scope) {
+            let offset = 0
+            const properties: MemberAccess.Property[] = []
+
+            for (const propertyNode of struct.properties) {
+                const type = parseExpressionNode(propertyNode.type, scope)
+                if (!(type instanceof InstanceType)) throw new ParsingError(new Diagnostic("Expected type", type.span))
+                const property = new MemberAccess.Property(propertyNode.span, propertyNode.name, type, offset)
+                offset += type.size
+                properties.push(property)
+
+                scope.register(namespace + "." + property.name, property)
+            }
+
+            const type = new Struct(struct.span, namespace, offset, properties)
+            debug.type(type)
+            scope.register(namespace, type)
+        }
+
         function parseRoot(root: RootNode, scope: Scope) {
-            let pending: ASTNode[] = root.children
-            let next: ASTNode[] = []
+            let pending: QueuedNode[] = root.children.map(v => ({ node: v, namespace: "" }))
+            let next: QueuedNode[] = []
+            const globalErrors: Diagnostic[] = []
 
             while (pending.length > 0) {
                 let errors: Diagnostic[] = []
-                for (const node of pending) {
+                for (const queued of pending) {
+                    const { node, namespace } = queued
                     try {
                         if (node instanceof FunctionDefinitionNode) {
                             parseFunctionDefinition(node, scope)
@@ -433,17 +462,30 @@ export namespace Typing {
                             continue
                         }
 
+                        if (node instanceof NamespaceNode) {
+                            const fqn = namespace ? namespace + "." + node.name : node.name
+                            next.push(...node.children.map(v => ({ node: v, namespace: fqn })))
+                            if (node.struct) {
+                                parseStruct(fqn, node.struct, scope)
+                            }
+                            continue
+                        }
+
                         throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
                     } catch (err) {
                         if (err instanceof ParsingError) {
-                            errors.push(...err.diagnostics)
-                            next.push(node)
+                            if (!(queued.node instanceof NamespaceNode)) {
+                                errors.push(...err.diagnostics)
+                                next.push(queued)
+                            } else {
+                                globalErrors.push(...err.diagnostics)
+                            }
                         } else throw err
                     }
                 }
 
                 if (next.length == pending.length) {
-                    throw new ParsingError(...errors)
+                    throw new ParsingError(...errors, ...globalErrors)
                 }
 
                 pending = next

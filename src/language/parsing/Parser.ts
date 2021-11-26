@@ -8,11 +8,14 @@ import { FunctionDefinitionNode } from "../ast/nodes/FunctionDefinitionNode"
 import { IdentifierNode } from "../ast/nodes/IdentifierNode"
 import { IfStatementNode } from "../ast/nodes/IfStatementNode"
 import { InvocationNode } from "../ast/nodes/InvocationNode"
+import { NamespaceNode } from "../ast/nodes/NamespaceNode"
 import { NumberLiteral } from "../ast/nodes/NumberLiteral"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
 import { StringLiteral } from "../ast/nodes/StringLiteral"
+import { StructNode } from "../ast/nodes/StructNode"
+import { StructPropertyNode } from "../ast/nodes/StructPropertyNode"
 import { ImplicitSpecializationStrategy, IMPLICIT_SPECIALIZATION_STRATEGY_TYPES, TemplateNode, TemplateParameter } from "../ast/nodes/TemplateNode"
 import { TupleNode } from "../ast/nodes/TupleNode"
 import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
@@ -138,6 +141,56 @@ export namespace Parser {
             return new TemplateNode(start.span(-8), params, null)
         }
 
+        function parseNamespaceDeclaration() {
+            skipWhitespace()
+            const name = consumeWord()
+            if (!name) throw new ParsingFailure("Expected namespace name")
+            skipWhitespace()
+            if (!consume("{")) throw new ParsingFailure("Expected namespace start \"{\"")
+
+            const namespace = new NamespaceNode(name.span, name.data)
+
+            for (; ;) {
+                skipWhitespace()
+
+                const start = makePos()
+
+                if (consume("}")) {
+                    break
+                }
+
+                if (consume("struct")) {
+                    if (namespace.struct) throw new ParsingFailure("Duplicate struct definition")
+                    const struct = namespace.struct = new StructNode(start.span(6))
+                    skipWhitespace()
+                    if (!consume("{")) throw new ParsingFailure("Expected struct start \"{\"")
+                    for (; ;) {
+                        skipWhitespace()
+
+                        if (consume("}")) {
+                            break
+                        }
+
+                        const name = consumeWord()
+                        if (!name) throw new ParsingFailure("Expected struct property")
+
+                        skipWhitespace()
+                        if (!consume(":")) throw new ParsingFailure("Expected \":\"")
+                        skipWhitespace()
+                        const type = parseExpression()
+
+                        struct.properties.push(new StructPropertyNode(name.span, name.data, type))
+                        continue
+                    }
+                    continue
+                }
+
+                throw new ParsingFailure("Unexpected token")
+            }
+
+            return namespace
+        }
+
         function parseRoot() {
             const rootNode = new RootNode(makePos().span(1))
             let template: TemplateNode | null = null
@@ -164,6 +217,11 @@ export namespace Parser {
 
                 if (consume("function")) {
                     addChild(parseFunctionStatement())
+                    continue
+                }
+
+                if (consume("namespace")) {
+                    addChild(parseNamespaceDeclaration())
                     continue
                 }
 

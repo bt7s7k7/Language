@@ -42,8 +42,8 @@ export class Tuple extends InstanceType {
 
     public getDetail(debug: DebugInfo.Builder) {
         return {
-            types: this.types.map(v => debug.type(v).name),
-            shape: this.shape.properties.map(v => ({ type: debug.type(v.type).name, offset: v.offset }))
+            tuple: true,
+            shape: this.shape.properties.map((v, i) => ({ type: debug.type(v.type).name, offset: v.offset, name: "item" + i }))
         }
     }
 

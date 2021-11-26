@@ -1,6 +1,7 @@
 import chalk = require("chalk")
 import { createInterface } from "readline"
 import { inspect, TextDecoder, TextEncoder } from "util"
+import { DebugInfo } from "../language/DebugInfo"
 import { Diagnostic } from "../language/Diagnostic"
 import { Assembler } from "../language/emission/Assembler"
 import { Emitter } from "../language/emission/Emitter"
@@ -57,12 +58,19 @@ const ast = Parser.parse(new SourceFile("<anon>",
     template(T is any 1)
     function printf(format: []Char, args: T): Void => extern
 
+    namespace Foo {
+        struct {
+            a: Number
+            b: Tuple(Number, Number)
+        }
+    }
+
     function main() {
-        var slice = []Number(5, 10)
-        var ptr = &slice[0]
-        printf("Original value: {0}", .[ptr.*])
-        ptr = (ptr!as(Number) + 8)!as(*Number)
-        printf("New value: {0}", .[ptr.*])
+        var foo: Foo
+        foo.a = 10
+        foo.b.item0 = 5
+
+        printf("Foo: {0}", .[foo])
     }
 
     `
@@ -142,6 +150,7 @@ if (ast instanceof Diagnostic) {
             vm.resume(MemoryView.empty)
         })
 
+
         for (const name of build.header.reflection.templates["printf"].specializations) {
             const specialization = build.header.reflection.functions[name]
             const typeName = specialization.args[1].type
@@ -153,6 +162,23 @@ if (ast instanceof Diagnostic) {
                 function loadString(slice: MemoryView) {
                     const [ptr, size] = slice.as(Float64Array)
                     return decoder.decode(vm.loadPointer(ptr, size).as(Uint8Array))
+                }
+
+                function objectifyStruct(value: MemoryView, struct: DebugInfo.TypeInfo) {
+                    const result: Record<string, any> = {}
+
+                    for (let { name, offset, type } of struct.detail.shape) {
+                        const typeInfo = build.header.reflection.types[type]
+                        const propertyValue = value.slice(offset, typeInfo.size)
+
+                        if (typeInfo.detail?.shape) {
+                            result[name] = objectifyStruct(propertyValue, typeInfo)
+                        } else {
+                            result[name] = propertyValue
+                        }
+                    }
+
+                    return result
                 }
 
                 const tuple = vm.variableStack.read(ctx.references[1], ctx.function.arguments[1].size)
@@ -169,9 +195,14 @@ if (ast instanceof Diagnostic) {
                             return chalk.greenBright(JSON.stringify(loadString(value)))
                         }
 
+                        if (type.detail?.shape) {
+                            return inspect(objectifyStruct(value, type))
+                        }
+
                         return chalk.yellowBright(value.toString())
                     })
 
+                // eslint-disable-next-line no-console
                 console.log(format)
                 vm.resume(MemoryView.empty)
             })
