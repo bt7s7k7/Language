@@ -22,6 +22,10 @@ export class Struct extends InstanceType {
         debug.type(this)
             .setDetail(this.getDetail(debug))
             .setSize(this.size)
+
+        for (const property of this.properties) {
+            debug.type(property.type)
+        }
     }
 
     constructor(

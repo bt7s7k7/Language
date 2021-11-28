@@ -28,6 +28,7 @@ import { Never } from "./types/base"
 import { ConstExpr, isConstexpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
+import { NamespaceRef } from "./types/NamespaceRef"
 import { Pointer } from "./types/Pointer"
 import { ProgramFunction } from "./types/ProgramFunction"
 import { Reference } from "./types/Reference"
@@ -128,10 +129,10 @@ export namespace Typing {
             }
         }
 
-        public runInitializer(name: string, callback: () => void) {
+        public runInitializer<T>(name: string, callback: () => T) {
             if (this.initializerCache.has(name)) return
             this.initializerCache.add(name)
-            callback()
+            return callback()
         }
 
         constructor(
@@ -383,7 +384,7 @@ export namespace Typing {
             return definition
         }
 
-        function parseTemplateDefinition(node: TemplateNode, scope: Scope) {
+        function parseTemplateDefinition(namespace: string, node: TemplateNode, scope: Scope) {
             if (!node.entity) unreachable()
 
             const implicit = !!node.params[0]?.strategy
@@ -420,6 +421,32 @@ export namespace Typing {
                 scope.registerMany(name, {
                     "static !invoke": template.implicitSpecialization
                 })
+            } else if (node.entity instanceof NamespaceNode) {
+                const name = node.entity.name
+                debug.template(name)
+
+                const template = new TemplatedEntity(node.span, name, node.params, implicit, (scope, args): any => {
+                    const specializedName = name + "<" + args.map(v => v.name).join(", ") + ">"
+                    const memoized = scope.get(specializedName)
+                    if (memoized)
+                        return memoized as Struct | NamespaceRef
+
+                    const innerScope = new Scope(scope)
+                    node.params.forEach((v, i) => innerScope.register(v.name, args[i]))
+                    const definition = parseNamespace(namespace, node.entity as NamespaceNode, innerScope, specializedName)
+                    if (definition instanceof Struct) {
+                        scope.registerMany(specializedName, {
+                            "": definition,
+                            ...Object.fromEntries(definition.properties.map(v => [v.name, v]))
+                        })
+                    } else {
+                        scope.register(specializedName, definition)
+                    }
+
+                    return definition
+                })
+
+                scope.register(name, template)
             } else throw new ParsingError(new Diagnostic(`Node type ${node.entity.constructor.name} is not suitable for templating`, node.entity.span))
         }
 
@@ -445,11 +472,31 @@ export namespace Typing {
                 "": type,
                 ...Object.fromEntries(properties.map(v => [v.name, v]))
             })
+
+            return type
         }
 
-        function parseRoot(root: RootNode, scope: Scope) {
-            let pending: QueuedNode[] = root.children.map(v => ({ node: v, namespace: "" }))
-            let next: QueuedNode[] = []
+        function parseNamespace(namespace: string, node: NamespaceNode, scope: Scope, name = node.name) {
+            const fullName = namespace ? namespace + "." + name : name
+            next.push(...node.children.map(v => ({ node: v, namespace: fullName })))
+            const ref = scope.get(fullName)
+            if (ref) {
+                if (!(ref instanceof NamespaceRef) && !(ref instanceof Struct)) throw new ParsingError(new Diagnostic("Duplicate identifier", node.span), new Diagnostic("Defined here", ref.span))
+                if (node.struct) throw new ParsingError(new Diagnostic("Cannot redefine struct", node.span))
+                return ref
+            } else {
+                if (node.struct) return parseStruct(fullName, node.struct, scope)
+
+                const ref = new NamespaceRef(node.span, fullName)
+                scope.register(fullName, ref)
+                return ref
+            }
+
+        }
+
+        let pending: QueuedNode[] = rootNode.children.map(v => ({ node: v, namespace: "" }))
+        let next: QueuedNode[] = []
+        function parseRoot(scope: Scope) {
             const globalErrors: Diagnostic[] = []
 
             while (pending.length > 0) {
@@ -463,16 +510,12 @@ export namespace Typing {
                         }
 
                         if (node instanceof TemplateNode) {
-                            parseTemplateDefinition(node, scope)
+                            parseTemplateDefinition(namespace, node, scope)
                             continue
                         }
 
                         if (node instanceof NamespaceNode) {
-                            const fqn = namespace ? namespace + "." + node.name : node.name
-                            next.push(...node.children.map(v => ({ node: v, namespace: fqn })))
-                            if (node.struct) {
-                                parseStruct(fqn, node.struct, scope)
-                            }
+                            parseNamespace(namespace, node, scope)
                             continue
                         }
 
@@ -499,7 +542,7 @@ export namespace Typing {
         }
 
         try {
-            parseRoot(rootNode, rootScope)
+            parseRoot(rootScope)
         } catch (err) {
             if (err instanceof ParsingError) {
                 return err.diagnostics

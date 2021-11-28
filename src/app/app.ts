@@ -58,17 +58,18 @@ const ast = Parser.parse(new SourceFile("<anon>",
     template(T is any 1)
     function printf(format: []Char, args: T): Void => extern
 
+    template(T)
     namespace Foo {
         struct {
-            next: *Foo
+            value: T
         }
     }
 
     function main() {
-        var foo: Foo
-        foo.next = *Foo.alloc()
+        var foo: Foo[Number]
+        foo.value = 5
 
-        printf("Foo: {0} {1}", .[foo, foo.next.*])
+        printf("Foo: {0}", .[foo])
     }
 
     `
