@@ -48,7 +48,12 @@ export class Slice extends InstanceType {
 
     public getDetail(debug: DebugInfo.Builder) {
         return {
-            type: debug.type(this.type).name
+            type: debug.type(this.type).name,
+            struct: true,
+            shape: [
+                { type: debug.type(new Pointer(this.type)).name, name: "data", offset: 0 },
+                { type: "Number", name: "length", offset: 8 },
+            ]
         }
     }
 

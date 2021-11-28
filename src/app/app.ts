@@ -70,6 +70,10 @@ const ast = Parser.parse(new SourceFile("<anon>",
         foo.value = 5
 
         printf("Foo: {0}", .[foo])
+
+        var array = []Number.alloc(5)
+        printf("Array: {0} {1}", .[array, array.length])
+        array.free()
     }
 
     `
