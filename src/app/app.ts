@@ -72,7 +72,9 @@ const ast = Parser.parse(new SourceFile("<anon>",
         printf("Foo: {0}", .[foo])
 
         var array = []Number.alloc(5)
-        printf("Array: {0} {1}", .[array, array.length])
+        array[0] = 5
+        array[1] = 10
+        printf("Array: {0} {1}", .[array, "Hello world"])
         array.free()
     }
 
@@ -167,19 +169,41 @@ if (ast instanceof Diagnostic) {
                     return decoder.decode(vm.loadPointer(ptr, size).as(Uint8Array))
                 }
 
-                function objectifyStruct(value: MemoryView, struct: DebugInfo.TypeInfo) {
+                function serialize(value: MemoryView, type: DebugInfo.TypeInfo) {
+                    if (type.name == "[]Char") return loadString(value)
+                    if (type.name.startsWith("[]")) return serializeSlice(value, type)
+                    if (type.detail?.shape) return serializeStruct(value, type)
+                    if (type.name == "Number") return value.as(Float64Array)[0]
+                    if (type.name == "Char") return value.as(Uint8Array)[0]
+                    if (type.name[0] == "*") return { [inspect.custom]: () => chalk.greenBright(`(${type.name}) 0x${value.as(Float64Array)[0].toString(16)}`) }
+
+                    return value
+                }
+
+                function serializeStruct(value: MemoryView, struct: DebugInfo.TypeInfo) {
                     const result: Record<string, any> = {}
 
                     for (let { name, offset, type } of struct.detail.shape) {
                         const typeInfo = build.header.reflection.types[type]
+                        if (!typeInfo) throw new Error(`Cannot get type info of "${type}"`)
                         const propertyValue = value.slice(offset, typeInfo.size)
 
-                        if (typeInfo.detail?.shape) {
-                            result[name] = objectifyStruct(propertyValue, typeInfo)
-                        } else {
-                            result[name] = propertyValue
-                        }
+                        result[name] = serialize(propertyValue, typeInfo)
                     }
+
+                    return result
+                }
+
+                function serializeSlice(slice: MemoryView, type: DebugInfo.TypeInfo) {
+                    const elementType = build.header.reflection.types[type.detail.type]
+                    if (!elementType) throw new Error(`Cannot get type info of "${type.detail.type}"`)
+                    const result: any[] = []
+                    const [start, length] = slice.as(Float64Array)
+
+                    for (let i = 0; i < length; i++) {
+                        result.push(serialize(vm.loadPointer(start + i * elementType.size, elementType.size), elementType))
+                    }
+
 
                     return result
                 }
@@ -194,15 +218,7 @@ if (ast instanceof Diagnostic) {
 
                         const value = tuple.slice(prop.offset, type.size)
 
-                        if (type.name == "[]Char") {
-                            return chalk.greenBright(JSON.stringify(loadString(value)))
-                        }
-
-                        if (type.detail?.shape) {
-                            return inspect(objectifyStruct(value, type))
-                        }
-
-                        return chalk.yellowBright(value.toString())
+                        return inspect(serialize(value, type), true, Infinity, true)
                     })
 
                 // eslint-disable-next-line no-console
