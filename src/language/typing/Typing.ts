@@ -177,7 +177,7 @@ export namespace Typing {
             const steps: MemberAccess.Property[] = []
             for (let i = 0; i < path.length; i++) {
                 let { name, span } = path[i]
-                const type = steps[steps.length - 1]?.type ?? (target instanceof Value ? target.type : (name = "static " + name, target))
+                const type = steps[steps.length - 1]?.type ?? (target instanceof Value ? target.type : target)
                 const property = scope.getProperty(type, name)
 
                 if (!property) throw new ParsingError(new Diagnostic(`Type "${type.name}" does not have property "${name}"`, span))
@@ -299,7 +299,7 @@ export namespace Typing {
                 const func = ((): FunctionDefinition => {
                     if (target instanceof FunctionDefinition) return target
                     if (target instanceof Type) {
-                        const invokeFunction = scope.getProperty(target, "static !invoke")
+                        const invokeFunction = scope.getProperty(target, "!invoke")
                         if (!invokeFunction) throw new ParsingError(new Diagnostic("Target is not invocable", node.span))
                         if (!(invokeFunction instanceof FunctionDefinition)) unreachable()
                         if (invokeFunction) {
@@ -419,7 +419,7 @@ export namespace Typing {
                 scope.register(name, template)
 
                 scope.registerMany(name, {
-                    "static !invoke": template.implicitSpecialization
+                    "!invoke": template.implicitSpecialization
                 })
             } else if (node.entity instanceof NamespaceNode) {
                 const name = node.entity.name
