@@ -36,6 +36,8 @@ export class VariableDereference extends Value implements IRefValue {
         public readonly accessType: "declaration" | "construction" | "dereference" = "dereference"
     ) {
         super(span, new Reference(variable.type))
-        if (variable.type.size == Type.NOT_INSTANTIABLE) throw new Error(`Type "${variable.type.name}" is not instantiable`)
+        if (variable.type.size == Type.NOT_INSTANTIABLE) {
+            throw new Error(`Type "${variable.type.name}" is not instantiable`)
+        }
     }
 }

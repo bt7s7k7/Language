@@ -64,6 +64,7 @@ class ParsingError extends Error {
 interface QueuedNode {
     node: ASTNode
     namespace: string
+    scope: Typing.Scope
 }
 
 function notAssignable(a: Type, b: Type, span: Span) {
@@ -288,6 +289,11 @@ export namespace Typing {
 
                 if (body && !body.type.assignableTo(type)) throw new ParsingError(notAssignable(body.type, type, body.span))
 
+                if (type.size == Type.NOT_INSTANTIABLE) {
+                    if (type instanceof TemplatedEntity) throw new ParsingError(new Diagnostic(`Template "${type.name}" needs to be specialized`, node.type?.span ?? node.span))
+                    throw new ParsingError(new Diagnostic(`"${type.name}" is not an instantiable type`, node.type?.span ?? node.span))
+                }
+
                 const variable = new Variable(node.span, type, name)
                 scope.register(name, variable)
                 if (!body) return new VariableDereference(node.span, variable, "declaration")
@@ -380,17 +386,17 @@ export namespace Typing {
             self.body = body
             self.result = ConstExpr.removeConstexpr(Reference.dereference(self.result))
             self.regenerateName(definition.name)
-            debug.func(self.getSignature())
+            debug.func(self)
 
-            if (scope.get(fullName) instanceof FunctionDefinition) {
-                (scope.get(fullName) as FunctionDefinition).addOverload(self)
+            if (rootScope.get(fullName) instanceof FunctionDefinition) {
+                (rootScope.get(fullName) as FunctionDefinition).addOverload(self)
             } else {
-                scope.register(fullName, definition)
+                rootScope.register(fullName, definition)
             }
 
             createdFunctions.add(self.name)
 
-            return definition
+            return self
         }
 
         function parseTemplateDefinition(namespace: string, node: TemplateNode, scope: Scope) {
@@ -417,17 +423,15 @@ export namespace Typing {
 
                     const innerScope = new Scope(scope)
                     node.params.forEach((v, i) => innerScope.register(v.name, args[i]))
-                    const definition = parseFunctionDefinition(namespace, node.entity as FunctionDefinitionNode, innerScope, specializedName)
+                    const func = parseFunctionDefinition(namespace, node.entity as FunctionDefinitionNode, innerScope, specializedName)
+                    debug.template(name).addSpecialization(func)
 
-                    scope.register(specializedName, definition)
-
-                    return definition
-
+                    return rootScope.get(specializedName) as FunctionDefinition
                 })
 
-                scope.register(name, template)
+                rootScope.register(name, template)
 
-                scope.registerMany(name, {
+                if (implicit) rootScope.registerMany(name, {
                     "@invoke": template.implicitSpecialization
                 })
             } else if (node.entity instanceof NamespaceNode) {
@@ -442,20 +446,19 @@ export namespace Typing {
 
                     const innerScope = new Scope(scope)
                     node.params.forEach((v, i) => innerScope.register(v.name, args[i]))
-                    const definition = parseNamespace(namespace, node.entity as NamespaceNode, innerScope, specializedName)
-                    if (definition instanceof Struct) {
-                        scope.registerMany(specializedName, {
-                            "": definition,
-                            ...Object.fromEntries(definition.properties.map(v => [v.name, v]))
-                        })
-                    } else {
-                        scope.register(specializedName, definition)
+                    const result = parseNamespace(namespace, node.entity as NamespaceNode, innerScope, specializedName)
+                    if (result instanceof Struct) {
+                        debug.template(name).addSpecialization(result)
                     }
 
-                    return definition
+                    return result
                 })
 
-                scope.register(name, template)
+                rootScope.register(name, template)
+
+                if (implicit) rootScope.registerMany(name, {
+                    "@invoke": template.implicitSpecialization
+                })
             } else throw new ParsingError(new Diagnostic(`Node type ${node.entity.constructor.name} is not suitable for templating`, node.entity.span))
         }
 
@@ -477,7 +480,7 @@ export namespace Typing {
             }
 
             type.finalize(properties, offset, debug)
-            scope.registerMany(namespace, {
+            rootScope.registerMany(namespace, {
                 "": type,
                 ...Object.fromEntries(properties.map(v => [v.name, v]))
             })
@@ -487,7 +490,7 @@ export namespace Typing {
 
         function parseNamespace(namespace: string, node: NamespaceNode, scope: Scope, name = node.name) {
             const fullName = namespace ? namespace + "." + name : name
-            next.push(...node.children.map(v => ({ node: v, namespace: fullName })))
+            next.push(...node.children.map(v => ({ node: v, namespace: fullName, scope })))
             const ref = scope.get(fullName)
             if (ref) {
                 if (!(ref instanceof NamespaceRef) && !(ref instanceof Struct)) throw new ParsingError(new Diagnostic("Duplicate identifier", node.span), new Diagnostic("Defined here", ref.span))
@@ -497,13 +500,13 @@ export namespace Typing {
                 if (node.struct) return parseStruct(fullName, node.struct, scope)
 
                 const ref = new NamespaceRef(node.span, fullName)
-                scope.register(fullName, ref)
+                rootScope.register(fullName, ref)
                 return ref
             }
 
         }
 
-        let pending: QueuedNode[] = rootNode.children.map(v => ({ node: v, namespace: "" }))
+        let pending: QueuedNode[] = rootNode.children.map(v => ({ node: v, namespace: "", scope: rootScope }))
         let next: QueuedNode[] = []
         function parseRoot(scope: Scope) {
             const globalErrors: Diagnostic[] = []
@@ -512,7 +515,7 @@ export namespace Typing {
                 let errors: Diagnostic[] = []
                 let success = false
                 for (const queued of pending) {
-                    const { node, namespace } = queued
+                    const { node, namespace, scope } = queued
                     try {
                         if (node instanceof FunctionDefinitionNode) {
                             parseFunctionDefinition(namespace, node, scope)

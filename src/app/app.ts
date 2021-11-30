@@ -58,24 +58,21 @@ const ast = Parser.parse(new SourceFile("<anon>",
     template(T is any 1)
     function printf(format: []Char, args: T): Void => extern
 
+    template(T is any 0)
     namespace Foo {
         struct {
-            value: Number
+            value: T
         }
 
-        function @invoke(value: Number) {
-            var ret: Foo
+        function @invoke(value: T) {
+            var ret: Foo[T]
             ret.value = value
             return ret
         }
     }
 
-    function @add(a: Foo, b: Foo) {
-        return Foo(a.value + b.value)
-    }
-
     function main() {
-        printf("{0} {1}", .[Foo(5), Foo(1) + Foo(2)])
+        printf("{0} {1}", .[Foo(5)])
     }
 
     `
@@ -214,8 +211,8 @@ if (ast instanceof Diagnostic) {
                 const format = loadString(vm.variableStack.read(ctx.references[0], ctx.function.arguments[0].size))
                     .replace(/\{(\d+)\}/g, (_, i) => {
                         const prop = props[i]
-                        const type = build.header.reflection.types[prop.type]
                         if (!prop) return chalk.redBright(`{${i}}`)
+                        const type = build.header.reflection.types[prop.type]
 
                         const value = tuple.slice(prop.offset, type.size)
 

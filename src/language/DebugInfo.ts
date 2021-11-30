@@ -1,6 +1,7 @@
 import { createShadowObject, ensureProperty } from "../comTypes/util"
 import { Type } from "./typing/Type"
-import { SpecificFunction } from "./typing/types/SpecificFunction"
+import { ProgramFunction } from "./typing/types/ProgramFunction"
+import { Struct } from "./typing/types/Struct"
 
 function makeBuilder<T extends Record<string, any>, M>(target: T, methods: M & ThisType<T & M>) {
     return Object.assign(createShadowObject(target), methods) as T & M
@@ -22,7 +23,8 @@ export namespace DebugInfo {
             return makeBuilder(ensureProperty(this.types, type.name, () => ({
                 name: type.name,
                 size: type.size,
-                detail: type.getDetail(this)
+                detail: type.getDetail(this),
+                template: null
             })), {
                 setName(name: string) {
                     this.name = name
@@ -35,15 +37,21 @@ export namespace DebugInfo {
                 setSize(size: number) {
                     this.size = size
                     return this
+                },
+                setTemplate(template: string | null) {
+                    this.template = template
+                    return this
                 }
             })
         }
 
-        public func(signature: SpecificFunction.Signature) {
+        public func(func: ProgramFunction) {
             const self = this
 
-            return makeBuilder(ensureProperty(this.functions, signature.target.name, () => ({
-                name: signature.target.name,
+            const signature = func.getSignature()
+
+            return makeBuilder(ensureProperty(this.functions, func.name, () => ({
+                name: func.name,
                 template: null,
                 result: self.type(signature.result).name,
                 args: signature.arguments.map(v => ({ type: self.type(v.type).name, name: v.name })),
@@ -62,10 +70,10 @@ export namespace DebugInfo {
                 name,
                 specializations: []
             })), {
-                addSpecialization(func: SpecificFunction.Signature) {
-                    if (this.specializations.includes(func.target.name)) return
+                addSpecialization(target: ProgramFunction | Struct) {
+                    if (this.specializations.includes(target.name)) return
 
-                    const info = self.func(func)
+                    const info = self[target instanceof Struct ? "type" : "func"](target as any)
                     this.specializations.push(info.name)
                     info.setTemplate(this.name)
 
@@ -95,6 +103,7 @@ export namespace DebugInfo {
         name: string
         size: number
         detail: any
+        template: string | null
     }
 
     export interface Data {
