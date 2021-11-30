@@ -77,11 +77,14 @@ const ast = Parser.parse(new SourceFile("<anon>",
         }
     }
 
+    function test(foo: *Foo[Number]) {
+        foo.*.setValue(5)
+    }
+
     function main() {
         var foo: Foo[Number]
-        foo.setValue(5)
 
-        Foo[Number].print(1)
+        test(&foo)
 
         printf("Foo: {0}", .[foo.getValue()])
     }
