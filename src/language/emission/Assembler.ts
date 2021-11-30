@@ -87,10 +87,12 @@ export class Assembler {
                         const index = header.labels.indexOf(label)
                         instructions.push(index)
                     } else if (arg.startsWith("f:")) {
-                        const index = this.functionLookup.get(arg.substr(2)) ?? unreachable()
+                        const index = this.functionLookup.get(arg.substr(2))
+                        if (index == null) throw new Error("Cannot find function " + arg.substr(2))
                         instructions.push(index)
                     } else {
                         const index = variableIndexes.get(func.variables.get(arg)!) ?? this.dataLookup.get(arg) ?? unreachable()
+                        if (index == null) throw new Error("Cannot find variable " + arg.substr(2))
                         instructions.push(index)
                     }
                 }

@@ -58,35 +58,24 @@ const ast = Parser.parse(new SourceFile("<anon>",
     template(T is any 1)
     function printf(format: []Char, args: T): Void => extern
 
-    template(T)
     namespace Foo {
         struct {
-            value: T
+            value: Number
         }
 
-        function setValue(this, value: Number) {
-            this.*.value = value
-        }
-
-        function getValue(this) {
-            return 5
-        }
-
-        function print(number: Number) {
-            printf("{0}", .[number])
+        function @invoke(value: Number) {
+            var ret: Foo
+            ret.value = value
+            return ret
         }
     }
 
-    function test(foo: *Foo[Number]) {
-        foo.*.setValue(5)
+    function @add(a: Foo, b: Foo) {
+        return Foo(a.value + b.value)
     }
 
     function main() {
-        var foo: Foo[Number]
-
-        test(&foo)
-
-        printf("Foo: {0}", .[foo.getValue()])
+        printf("{0} {1}", .[Foo(5), Foo(1) + Foo(2)])
     }
 
     `
@@ -104,7 +93,7 @@ if (ast instanceof Diagnostic) {
         "MOD", "EQ", "LT", "GT", "LTE",
         "GTE", "NEGATE", "AND", "OR"
     ]) {
-        const funcName = `__operator__${operatorName.toLowerCase()}`
+        const funcName = `@${operatorName.toLowerCase()}`
         const definition = new FunctionDefinition(Span.native, funcName)
 
         const intrinsic = (IntrinsicMaths as any)[operatorName]
@@ -116,21 +105,21 @@ if (ast instanceof Diagnostic) {
         globalScope.register(funcName, definition)
     }
 
-    globalScope.register("__operator__assign", new FunctionDefinition(Span.native, "__operator__assign")
+    globalScope.register("@assign", new FunctionDefinition(Span.native, "@assign")
         .addOverload(new IntrinsicMaths.Assignment())
     )
 
-    globalScope.register("__operator__as_ptr", new FunctionDefinition(Span.native, "__operator__as_ptr").addOverload(Pointer.AS_POINTER_OPERATOR))
-    globalScope.register("__operator__addr", new FunctionDefinition(Span.native, "__operator__addr").addOverload(Pointer.ADDRESS_OF_OPERATOR))
-    globalScope.register("__operator__deref", new FunctionDefinition(Span.native, "__operator__deref").addOverload(Pointer.DEREF_OPERATOR))
+    globalScope.register("@as_ptr", new FunctionDefinition(Span.native, "@as_ptr").addOverload(Pointer.AS_POINTER_OPERATOR))
+    globalScope.register("@addr", new FunctionDefinition(Span.native, "@addr").addOverload(Pointer.ADDRESS_OF_OPERATOR))
+    globalScope.register("@deref", new FunctionDefinition(Span.native, "@deref").addOverload(Pointer.DEREF_OPERATOR))
 
-    globalScope.register("__operator__as_slice", new FunctionDefinition(Span.native, "__operator__as_slice").addOverload(Slice.AS_SLICE_OPERATOR))
-    globalScope.register("__operator__index", new FunctionDefinition(Span.native, "__operator__index").addOverload(Slice.INDEX_OPERATOR))
+    globalScope.register("@as_slice", new FunctionDefinition(Span.native, "@as_slice").addOverload(Slice.AS_SLICE_OPERATOR))
+    globalScope.register("@index", new FunctionDefinition(Span.native, "@index").addOverload(Slice.INDEX_OPERATOR))
 
     globalScope.register("__createTuple", new FunctionDefinition(Span.native, "__createTuple").addOverload(Tuple.CREATE_TUPLE))
     globalScope.register("Tuple", new FunctionDefinition(Span.native, "Tuple").addOverload(Tuple.TYPE))
 
-    globalScope.register("__operator__reinterpret", new FunctionDefinition(Span.native, "__operator__reinterpret").addOverload(REINTERPRET_OPERATOR))
+    globalScope.register("@reinterpret", new FunctionDefinition(Span.native, "@reinterpret").addOverload(REINTERPRET_OPERATOR))
 
     const program = Typing.parse(ast, globalScope)
     if (program instanceof Array) {
@@ -141,8 +130,9 @@ if (ast instanceof Diagnostic) {
         const emission = Emitter.emit(program)
         console.log(inspect(emission, undefined, Infinity, true))
         const assembler = new Assembler(program)
-        for (const symbol of emission.values()) {
-            assembler.addFunction(symbol)
+        for (const name of program.createdFunctions) {
+            const func = emission.get(name)!
+            assembler.addFunction(func)
         }
 
         const build = assembler.build()

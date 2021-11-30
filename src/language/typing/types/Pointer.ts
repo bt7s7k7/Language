@@ -59,7 +59,7 @@ export namespace Pointer {
             }
         }
 
-        constructor() { super(Span.native, "__operator__as_ptr") }
+        constructor() { super(Span.native, "@as_ptr") }
     }
 
     export const ADDRESS_OF_OPERATOR = new class extends IntrinsicFunction {
@@ -89,7 +89,7 @@ export namespace Pointer {
             return Pointer.size
         }
 
-        constructor() { super(Span.native, "__operator__addr") }
+        constructor() { super(Span.native, "@addr") }
     }
 
     export const DEREF_OPERATOR = new class extends IntrinsicFunction implements IIntrinsicRefFunction {
@@ -124,7 +124,7 @@ export namespace Pointer {
             EmissionUtil.safeEmit(builder, Pointer.size, invocation.args[0])
         }
 
-        constructor() { super(Span.native, "__operator__deref") }
+        constructor() { super(Span.native, "@deref") }
     }
 
     export class PointerAlloc extends IntrinsicFunction {

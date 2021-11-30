@@ -14,6 +14,7 @@ export class Program {
 
     constructor(
         public readonly entries: Map<string, Value | Type>,
-        public readonly debug: DebugInfo.Builder
+        public readonly debug: DebugInfo.Builder,
+        public readonly createdFunctions: Set<string>
     ) { }
 }

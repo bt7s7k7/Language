@@ -32,7 +32,7 @@ function createLocalSlice(span: Span, builder: FunctionIRBuilder, length: number
 
 function registerSliceMethods(slice: Slice, scope: Typing.Scope) {
     scope.registerMany(slice.name, {
-        "!invoke": new FunctionDefinition(Span.native, "__slice_ctor").addOverload(new Slice.SliceCtor(slice)),
+        "@invoke": new FunctionDefinition(Span.native, "__slice_ctor").addOverload(new Slice.SliceCtor(slice)),
         "create": new FunctionDefinition(Span.native, "__slice_create").addOverload(new Slice.SliceCreate(slice)),
         "alloc": new FunctionDefinition(Span.native, "alloc").addOverload(new Slice.SliceAlloc(slice)),
         "free": new FunctionDefinition(Span.native, "free").addOverload(new Slice.SliceFree(slice)),
@@ -81,7 +81,7 @@ export namespace Slice {
             }
         }
 
-        constructor() { super(Span.native, "__operator__as_slice") }
+        constructor() { super(Span.native, "@as_slice") }
     }
 
     export class SliceCtor extends IntrinsicFunction {
@@ -192,7 +192,7 @@ export namespace Slice {
             builder.pushInstruction(Instructions.ADD, Instructions.Types.FLOAT64)
         }
 
-        constructor() { super(Span.native, "__operator__index") }
+        constructor() { super(Span.native, "@index") }
     }
 
     export class SliceAlloc extends IntrinsicFunction {

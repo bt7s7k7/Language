@@ -80,7 +80,7 @@ function createNumber(name: string, size: number, container: AnyTypedArrayCtor) 
                 }
             }
 
-            constructor() { super(Span.native, "__operator__negate") }
+            constructor() { super(Span.native, "@negate") }
 
         }
     }

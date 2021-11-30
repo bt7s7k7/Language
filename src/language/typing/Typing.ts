@@ -143,6 +143,7 @@ export namespace Typing {
 
     export function parse(rootNode: RootNode, globalScope: Scope) {
         const rootScope = globalScope
+        const createdFunctions = new Set<string>()
         const debug = new DebugInfo.Builder()
 
         function createConstant(constexpr: ConstExpr) {
@@ -231,7 +232,7 @@ export namespace Typing {
                 }
 
                 const operator = node.name
-                let handler = globalScope.get("__operator__" + operator) as FunctionDefinition
+                let handler = globalScope.get("@" + operator) as FunctionDefinition
                 if (!(handler instanceof FunctionDefinition)) throw new ParsingError(new Diagnostic(`Cannot find operator "${operator}"`, node.span))
                 const operands = node.children.map(v => parseExpressionNode(v, scope))
 
@@ -291,7 +292,7 @@ export namespace Typing {
                 scope.register(name, variable)
                 if (!body) return new VariableDereference(node.span, variable, "declaration")
 
-                const handler = (scope.get("__operator__assign") ?? unreachable()) as FunctionDefinition
+                const handler = (scope.get("@assign") ?? unreachable()) as FunctionDefinition
                 return createInvocation(node.span, handler, [new VariableDereference(node.span, variable, "construction"), body], scope)
             } else if (node instanceof InvocationNode) {
                 const target = parseExpressionNode(node.target, scope)
@@ -299,7 +300,7 @@ export namespace Typing {
                 const func = ((): FunctionDefinition => {
                     if (target instanceof FunctionDefinition) return target
                     if (target instanceof Type) {
-                        const invokeFunction = scope.getProperty(target, "!invoke")
+                        const invokeFunction = scope.getProperty(target, "@invoke")
                         if (!invokeFunction) throw new ParsingError(new Diagnostic("Target is not invocable", node.span))
                         if (!(invokeFunction instanceof FunctionDefinition)) unreachable()
                         if (invokeFunction) {
@@ -312,7 +313,7 @@ export namespace Typing {
                         const self = target.target
                         if (self) {
                             if (!(self.type instanceof Reference)) throw new ParsingError(new Diagnostic(`Cannot call a method on non-ref value`, node.span))
-                            const addressOfOperator = scope.get("__operator__addr")
+                            const addressOfOperator = scope.get("@addr")
                             if (!(addressOfOperator instanceof FunctionDefinition)) throw unreachable()
                             operands.unshift(createInvocation(node.span, addressOfOperator, [self], scope))
                         }
@@ -387,6 +388,8 @@ export namespace Typing {
                 scope.register(fullName, definition)
             }
 
+            createdFunctions.add(self.name)
+
             return definition
         }
 
@@ -425,7 +428,7 @@ export namespace Typing {
                 scope.register(name, template)
 
                 scope.registerMany(name, {
-                    "!invoke": template.implicitSpecialization
+                    "@invoke": template.implicitSpecialization
                 })
             } else if (node.entity instanceof NamespaceNode) {
                 const name = node.entity.name
@@ -561,6 +564,6 @@ export namespace Typing {
             }
         }
 
-        return new Program(rootScope.map, debug)
+        return new Program(rootScope.map, debug, createdFunctions)
     }
 }

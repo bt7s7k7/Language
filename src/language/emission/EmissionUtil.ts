@@ -16,9 +16,15 @@ export namespace EmissionUtil {
     }
 
     export function getTypeCode(type: Type) {
+        const ret = tryGetTypeCode(type)
+        if (!ret) throw new Error("Cannot get code for type " + type.name)
+        return ret
+    }
+
+    export function tryGetTypeCode(type: Type) {
         if (type instanceof Pointer) type = Primitives.Number.TYPE
         const ret = TYPE_LOOKUP.get(type)
-        if (!ret) throw new Error("Cannot get code for type " + type.name)
+        if (!ret) return null
         return ret
     }
 
