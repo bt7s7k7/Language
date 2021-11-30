@@ -10,8 +10,8 @@ export class VariableDereference extends Value implements IRefValue {
     public emit(builder: FunctionIRBuilder) {
         if (this.accessType == "declaration") {
             builder.registerVariable("variables", this.span, this.variable.name, this.variable.type.size)
-            return 0
         }
+
         builder.pushInstruction(Instructions.LOAD, this.variable.type.size, [this.variable.name])
         return this.variable.type.size
     }
@@ -21,12 +21,14 @@ export class VariableDereference extends Value implements IRefValue {
             builder.registerVariable("variables", this.span, this.variable.name, this.variable.type.size)
         }
 
-        if (this.accessType == "construction" || this.accessType == "dereference") {
-            builder.pushInstruction(Instructions.STORE, this.variable.type.size, [this.variable.name])
-        }
+        builder.pushInstruction(Instructions.STORE, this.variable.type.size, [this.variable.name])
     }
 
     public emitPtr(builder: FunctionIRBuilder) {
+        if (this.accessType == "declaration") {
+            builder.registerVariable("variables", this.span, this.variable.name, this.variable.type.size)
+        }
+
         builder.pushInstruction(Instructions.VAR_PTR, 0, [this.variable.name])
     }
 
