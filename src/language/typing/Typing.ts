@@ -331,7 +331,8 @@ export namespace Typing {
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 
-        function parseFunctionDefinition(func: FunctionDefinitionNode, scope: Scope, name = func.name) {
+        function parseFunctionDefinition(namespace: string, func: FunctionDefinitionNode, scope: Scope, name = func.name) {
+            const fullName = namespace ? namespace + "." + name : name
             let resultType = func.type ? parseExpressionNode(func.type, scope) : null
             if (resultType != null && !(resultType instanceof Type)) throw new ParsingError(new Diagnostic("Expected type" + resultType.type.name, func.type!.span))
 
@@ -341,8 +342,13 @@ export namespace Typing {
 
             for (const argument of func.args) {
                 const name = argument.name
-                const typeExpr = argument.type
-                if (!typeExpr) throw new ParsingError(new Diagnostic("Missing argument type", argument.span))
+                let typeExpr = argument.type
+                if (!typeExpr) {
+                    if (name == "this" && func.args[0] == argument) {
+                        typeExpr = new OperatorNode(argument.span, "as_ptr")
+                        typeExpr.addChild(new IdentifierNode(argument.span, namespace))
+                    } else throw new ParsingError(new Diagnostic("Missing argument type", argument.span))
+                }
                 if (argument.value) throw unreachable() // TODO: Implement default arguments
 
                 let type = parseExpressionNode(typeExpr, innerScope)
@@ -358,10 +364,10 @@ export namespace Typing {
                 innerScope.register(name, new Variable(argument.span, type, name))
             }
 
-            const self = new ProgramFunction(func.span, name, resultType ?? Never.TYPE, args, null!)
-            const definition = new FunctionDefinition(func.span, name)
+            const self = new ProgramFunction(func.span, fullName, resultType ?? Never.TYPE, args, null!)
+            const definition = new FunctionDefinition(func.span, fullName)
             definition.addOverload(self)
-            innerScope.register(name, definition)
+            innerScope.register(fullName, definition)
 
             const body = func.body == "extern" ? "extern" : parseExpressionNode(func.body, innerScope)
             if (body != "extern" && !(body instanceof Value)) throw new ParsingError(new Diagnostic("Expected value result", func.span))
@@ -375,10 +381,10 @@ export namespace Typing {
             self.regenerateName(definition.name)
             debug.func(self.getSignature())
 
-            if (scope.get(name) instanceof FunctionDefinition) {
-                (scope.get(name) as FunctionDefinition).addOverload(self)
+            if (scope.get(fullName) instanceof FunctionDefinition) {
+                (scope.get(fullName) as FunctionDefinition).addOverload(self)
             } else {
-                scope.register(name, definition)
+                scope.register(fullName, definition)
             }
 
             return definition
@@ -408,7 +414,7 @@ export namespace Typing {
 
                     const innerScope = new Scope(scope)
                     node.params.forEach((v, i) => innerScope.register(v.name, args[i]))
-                    const definition = parseFunctionDefinition(node.entity as FunctionDefinitionNode, innerScope, specializedName)
+                    const definition = parseFunctionDefinition(namespace, node.entity as FunctionDefinitionNode, innerScope, specializedName)
 
                     scope.register(specializedName, definition)
 
@@ -501,21 +507,25 @@ export namespace Typing {
 
             while (pending.length > 0) {
                 let errors: Diagnostic[] = []
+                let success = false
                 for (const queued of pending) {
                     const { node, namespace } = queued
                     try {
                         if (node instanceof FunctionDefinitionNode) {
-                            parseFunctionDefinition(node, scope)
+                            parseFunctionDefinition(namespace, node, scope)
+                            success = true
                             continue
                         }
 
                         if (node instanceof TemplateNode) {
                             parseTemplateDefinition(namespace, node, scope)
+                            success = true
                             continue
                         }
 
                         if (node instanceof NamespaceNode) {
                             parseNamespace(namespace, node, scope)
+                            success = true
                             continue
                         }
 
@@ -532,7 +542,7 @@ export namespace Typing {
                     }
                 }
 
-                if (next.length == pending.length) {
+                if (!success) {
                     throw new ParsingError(...errors, ...globalErrors)
                 }
 

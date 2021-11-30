@@ -121,7 +121,7 @@ export namespace Pointer {
         }
 
         public emitPtr(builder: FunctionIRBuilder, invocation: Invocation) {
-            // The value on the stack is already a pointer so we don't do anything
+            EmissionUtil.safeEmit(builder, Pointer.size, invocation.args[0])
         }
 
         constructor() { super(Span.native, "__operator__deref") }

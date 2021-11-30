@@ -185,6 +185,11 @@ export namespace Parser {
                     continue
                 }
 
+                if (consume("function")) {
+                    namespace.addChild(parseFunctionStatement())
+                    continue
+                }
+
                 throw new ParsingFailure("Unexpected token")
             }
 

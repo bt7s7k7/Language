@@ -63,19 +63,27 @@ const ast = Parser.parse(new SourceFile("<anon>",
         struct {
             value: T
         }
+
+        function setValue(this, value: Number) {
+            this.*.value = value
+        }
+
+        function getValue(this) {
+            return 5
+        }
+
+        function print(number: Number) {
+            printf("{0}", .[number])
+        }
     }
 
     function main() {
         var foo: Foo[Number]
-        foo.value = 5
+        foo.setValue(5)
 
-        printf("Foo: {0}", .[foo])
+        Foo[Number].print(1)
 
-        var array = []Number.alloc(5)
-        array[0] = 5
-        array[1] = 10
-        printf("Array: {0} {1}", .[array, "Hello world"])
-        array.free()
+        printf("Foo: {0}", .[foo.getValue()])
     }
 
     `
