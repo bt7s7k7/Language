@@ -17,6 +17,10 @@ export class FunctionIRBuilder {
         this.instructions.push(this.lastInstruction = { args, code, subtype })
     }
 
+    public popInstruction() {
+        this.instructions.pop()
+    }
+
     public registerData(name: string, data: ArrayBuffer, span: Span) {
         this.data.set(name, { name, data, span })
     }

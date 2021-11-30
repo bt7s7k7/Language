@@ -10,7 +10,11 @@ export class Block extends Value {
         for (const statement of this.statements) {
             const size = statement.emit(builder)
             if (size > 0) {
-                builder.pushInstruction(Instructions.DROP, size)
+                if (builder.lastInstruction && builder.lastInstruction.code == Instructions.LOAD && builder.lastInstruction.subtype == size) {
+                    builder.popInstruction()
+                } else {
+                    builder.pushInstruction(Instructions.DROP, size)
+                }
             }
         }
         return 0
