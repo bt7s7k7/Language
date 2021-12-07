@@ -100,6 +100,28 @@ export namespace Parser {
         }
 
         function skipWhitespace() {
+            while (!willEOF()) {
+                if (matches("//")) {
+                    const startLine = line
+                    while (line == startLine) {
+                        if (willEOF()) return
+                        next()
+                    }
+
+                    continue
+                }
+
+                if (matches("/*")) {
+                    while (!consume("*/")) {
+                        if (willEOF()) return
+                        next()
+                    }
+
+                    continue
+                }
+                if (!CharClass.isWhitespace(content[index])) break
+                next()
+            }
             while (!willEOF() && CharClass.isWhitespace(content[index])) next()
         }
 
