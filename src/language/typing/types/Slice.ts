@@ -132,12 +132,12 @@ export namespace Slice {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
             const sizeArgument = invocation.signature.arguments[0].type
             if (!isConstexpr<number>(sizeArgument, Primitives.Number.TYPE)) throw unreachable()
-            const { dataVariable, sliceSize, sliceLength } = createLocalSlice(invocation.span, builder, sizeArgument.value, this.sliceType.type)
+            const { dataVariable, sliceLength } = createLocalSlice(invocation.span, builder, sizeArgument.value, this.sliceType.type)
 
             builder.pushInstruction(Instructions.VAR_PTR, 0, [dataVariable])
-            const lengthPropSize = EmissionUtil.emitConstant(builder, new Float64Array([sliceLength]).buffer)
+            EmissionUtil.emitConstant(builder, new Float64Array([sliceLength]).buffer)
 
-            return lengthPropSize + Slice.size
+            return Slice.size
         }
 
         constructor(public readonly sliceType: Slice) { super(Span.native, "__slice_ctor") }
