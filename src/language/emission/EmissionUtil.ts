@@ -12,7 +12,9 @@ const TYPE_LOOKUP = new Map<Type, number>([
 export namespace EmissionUtil {
     export function safeEmit(builder: FunctionIRBuilder, expectedSize: number, target: Value) {
         const size = target.emit(builder)
-        if (size != expectedSize) throw new Error(`Emitted size mismatch (${target.constructor.name}), expected ${expectedSize} but got ${size}`)
+        if (size != expectedSize) {
+            throw new Error(`Emitted size mismatch (${target.constructor.name}), expected ${expectedSize} but got ${size}`)
+        }
     }
 
     export function getTypeCode(type: Type) {

@@ -3,6 +3,11 @@ import { Program } from "../typing/Program"
 import { ExecutableHeader } from "../vm/ExecutableHeader"
 import { FunctionIR, VariableIR } from "./FunctionIR"
 
+export interface Assembly {
+    header: ExecutableHeader
+    data: ArrayBufferLike
+}
+
 export class Assembler {
     public readonly chunks: ArrayBuffer[] = []
     public readonly header: ExecutableHeader = {
@@ -118,7 +123,7 @@ export class Assembler {
         return result.buffer
     }
 
-    public build() {
+    public build(): Assembly {
         return { header: this.header, data: this.concatData() }
     }
 

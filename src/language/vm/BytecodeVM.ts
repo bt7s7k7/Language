@@ -43,7 +43,7 @@ interface StackFrame {
     callback?: (data: MemoryView) => void
 }
 
-const TYPES: Record<(typeof Instructions.Types)[keyof typeof Instructions.Types], AnyTypedArrayCtor> = {
+const TYPES: Record<(typeof Instructions.Types)[Exclude<keyof typeof Instructions.Types, "names">], AnyTypedArrayCtor> = {
     [Instructions.Types.FLOAT64]: Float64Array,
     [Instructions.Types.UINT32]: Uint32Array
 }

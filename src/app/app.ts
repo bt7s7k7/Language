@@ -1,8 +1,10 @@
 import chalk = require("chalk")
 import { createInterface } from "readline"
 import { inspect, TextDecoder, TextEncoder } from "util"
+import { unreachable } from "../comTypes/util"
 import { DebugInfo } from "../language/DebugInfo"
 import { Diagnostic } from "../language/Diagnostic"
+import { Disassembler, FunctionDisassembly } from "../language/disassembler/Disassembler"
 import { Assembler } from "../language/emission/Assembler"
 import { Emitter } from "../language/emission/Emitter"
 import { Parser } from "../language/parsing/Parser"
@@ -37,6 +39,33 @@ MemoryView.prototype[inspect.custom] = function (this: MemoryView) {
     return chalk.yellow(this.toString())
 }
 
+function stringifyFunctionDisassembly(func: FunctionDisassembly) {
+    const lines = [
+        "== " + chalk.greenBright(func.name) + " =="
+    ]
+
+    if (func.header.offset == -1) {
+        lines.push(chalk.yellowBright("EXTERN"))
+    } else {
+        for (const instruction of func.instructions) {
+            if (instruction.label) {
+                lines.push(chalk.blueBright(instruction.label) + ":")
+            }
+            lines.push(`    ${chalk.grey(instruction.offset.toString(16).padStart(4, "0"))} ${chalk.cyan(instruction.instruction.label)}${instruction.subtype != null ? `[${chalk.magenta(instruction.subtype)}]` : ""} ${instruction.arguments.map(arg =>
+                arg.type == "const" ? "#" + chalk.yellowBright(arg.value)
+                    : arg.type == "data" ? chalk.greenBright(arg.value)
+                        : arg.type == "func" ? chalk.greenBright(arg.value)
+                            : arg.type == "jump" ? ":" + chalk.blueBright(arg.value.toString(16).padStart(8, "0"))
+                                : arg.type == "var" ? "$" + chalk.greenBright(arg.value)
+                                    : arg.type == "raw" ? chalk.yellowBright(arg.value)
+                                        : unreachable()
+            ).join(", ")}`)
+        }
+    }
+
+    return lines.join("\n")
+}
+
 const rl = createInterface(process.stdin, process.stdout)
 rl.pause()
 
@@ -58,13 +87,15 @@ const ast = Parser.parse(new SourceFile("<anon>",
     template(T is any 1)
     function printf(format: []Char, args: T): Void => extern
 
-    function set(target: *Number, value: Number) {
-        target.* = value
-    }
-
     function main() {
-        set(&var x: Number, 5)
-        printf("{0}", .[x])
+        var arr = []Number.create(10)
+        var i = 0
+        while (i < 10) {
+            arr[i] = i
+            i = i + 1
+        }
+
+        printf("{0}", .[arr])
     }
 
     `
@@ -116,6 +147,7 @@ if (ast instanceof Diagnostic) {
         console.log(inspect(program, undefined, Infinity, true))
     } else {
         console.log(inspect(program, undefined, Infinity, true))
+
         const emission = Emitter.emit(program)
         console.log(inspect(emission, undefined, Infinity, true))
         const assembler = new Assembler(program)
@@ -125,9 +157,8 @@ if (ast instanceof Diagnostic) {
         }
 
         const build = assembler.build()
-        console.log(inspect(build, undefined, Infinity, true))
-
         const vm = new BytecodeVM(build.header, build.data)
+
         const print: BytecodeVM.ExternFunction = (ctx, vm) => {
             const value = vm.variableStack.read(ctx.references[0], ctx.function.arguments[0].size)
             console.log(chalk.cyanBright("==>"), value)
@@ -144,7 +175,6 @@ if (ast instanceof Diagnostic) {
 
             vm.resume(MemoryView.empty)
         })
-
 
         for (const name of build.header.reflection.templates["printf"].specializations) {
             const specialization = build.header.reflection.functions[name]
@@ -227,6 +257,11 @@ if (ast instanceof Diagnostic) {
                 vm.resume(MemoryView.from(new Float64Array([ptr, data.byteLength]).buffer))
             })
         })
+
+        const disassembler = new Disassembler(build)
+        for (const disassembly of disassembler) {
+            console.log(stringifyFunctionDisassembly(disassembly))
+        }
 
         vm.directCall(vm.findFunction("main(): Void"), [new Float64Array([5, 25]).buffer], (result) => {
             console.log(result)
