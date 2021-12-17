@@ -1,6 +1,6 @@
-template(T is any 1)
-function printf(format: []Char, args: T): Void => extern
+template(T is any 0)
+function printf(templ: T): Void => extern
 
 function main() {
-    printf("Hello world", .[])    
+    printf(`The answer to ${5} + ${10} is ${5 + 10}`)
 }

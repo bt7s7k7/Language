@@ -7,6 +7,6 @@ export class InvocationNode extends ASTNode {
 
     constructor(
         span: Span,
-        public readonly args: ExpressionNode[]
+        public readonly args: ASTNode[]
     ) { super(span) }
 }

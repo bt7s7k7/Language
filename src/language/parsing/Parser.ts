@@ -1,3 +1,4 @@
+import exp = require("constants")
 import { unreachable } from "../../comTypes/util"
 import { ASTNode } from "../ast/ASTNode"
 import { BlockNode } from "../ast/nodes/BlockNode"
@@ -355,11 +356,17 @@ export namespace Parser {
             return args
         }
 
-        function parseStringLiteral(term: string, type: StringLiteral["type"]) {
+        function parseStringLiteral(term: string[] | string, type: StringLiteral["type"]) {
             const start = makePos()
             const startIndex = index
             const chars: string[] = []
-            while (!consume(term)) {
+            top: for (; ;) {
+                if (typeof term == "string") {
+                    if (consume(term)) break
+                } else for (const elem of term) {
+                    if (consume(elem)) break top
+                }
+
                 let curr = content[index]
                 next()
 
@@ -382,6 +389,29 @@ export namespace Parser {
             if (type == "char" && chars.length != 1) throw new ParsingFailure(`Character literal must contain exactly 1 character`)
 
             return new StringLiteral(start.span(index - startIndex), chars.join(""), type)
+        }
+
+        function parseTemplateLiteral() {
+            const start = makePos()
+            const literals: StringLiteral[] = []
+            const expressions: ASTNode[] = []
+
+            while (!consume("`")) {
+                literals.push(parseStringLiteral(["${", "`"], "string"))
+                if (content[index - 1] == "`") break
+                expressions.push(parseExpression())
+                if (!consume("}")) throw new ParsingFailure(`Expected "}"`)
+            }
+            const createTuple = new IdentifierNode(start.span(1), "__createTuple")
+            const literalTuple = new InvocationNode(start.span(1), literals)
+            const expressionTuple = new InvocationNode(start.span(1), expressions)
+            const result = new InvocationNode(start.span(1), [literalTuple, expressionTuple])
+
+            literalTuple.target = createTuple
+            expressionTuple.target = createTuple
+            result.target = createTuple
+
+            return result
         }
 
         function parseNumberLiteral() {
@@ -548,6 +578,12 @@ export namespace Parser {
 
                     if (consume("\"")) {
                         ret.addChild(parseStringLiteral("\"", "string"))
+                        hasTarget = true
+                        continue
+                    }
+
+                    if (consume("`")) {
+                        ret.addChild(parseTemplateLiteral())
                         hasTarget = true
                         continue
                     }

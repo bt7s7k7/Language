@@ -39,14 +39,65 @@
                 }
             ]
         },
-        "strings": {
-            "name": "string.quoted.double.lenk",
-            "begin": "\"",
-            "end": "\"",
+        "string-escape": {
             "patterns": [
                 {
                     "name": "constant.character.escape.lenk",
                     "match": "\\\\."
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.lenk",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "include": "#string-escape"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.lenk",
+                    "begin": "'",
+                    "end": "'",
+                    "patterns": [
+                        {
+                            "include": "#string-escape"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.interpolated.lenk",
+                    "begin": "`",
+                    "end": "`",
+                    "patterns": [
+                        {
+                            "include": "#string-escape"
+                        },
+                        {
+                            "name": "meta.template.expression.lenk",
+                            "begin": "\\$\\{",
+                            "beginCaptures": {
+                                "0": {
+                                    "name": "punctuation.definition.template-expression.begin.js"
+                                }
+                            },
+                            "end": "\\}",
+                            "endCaptures": {
+                                "0": {
+                                    "name": "punctuation.definition.template-expression.end.js"
+                                }
+                            },
+                            "patterns": [
+                                {
+                                    "include": "$self"
+                                }
+                            ]
+                        }
+                    ]
                 }
             ]
         },

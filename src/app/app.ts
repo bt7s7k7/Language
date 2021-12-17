@@ -133,6 +133,10 @@ if (ast instanceof Diagnostic) {
         }
 
         const build = assembler.build()
+        const disassembler = new Disassembler(build)
+        for (const disassembly of disassembler) {
+            console.log(stringifyFunctionDisassembly(disassembly))
+        }
         const vm = new BytecodeVM(build.header, build.data)
 
         const print: BytecodeVM.ExternFunction = (ctx, vm) => {
@@ -154,9 +158,8 @@ if (ast instanceof Diagnostic) {
 
         for (const name of build.header.reflection.templates["printf"].specializations) {
             const specialization = build.header.reflection.functions[name]
-            const typeName = specialization.args[1].type
+            const typeName = specialization.args[0].type
             const type = build.header.reflection.types[typeName]
-            const props: { type: string, offset: number }[] = type.detail.shape
 
             vm.externFunctions.set(name, (ctx, vm) => {
                 const decoder = new TextDecoder()
@@ -204,21 +207,28 @@ if (ast instanceof Diagnostic) {
                     return result
                 }
 
-                const tuple = vm.variableStack.read(ctx.references[1], ctx.function.arguments[1].size)
+                const [literalsProp, expressionsProp] = type.detail.shape
+                const literalsType = build.header.reflection.types[literalsProp.type]
+                const expressionsType = build.header.reflection.types[expressionsProp.type]
 
-                const format = loadString(vm.variableStack.read(ctx.references[0], ctx.function.arguments[0].size))
-                    .replace(/\{(\d+)\}/g, (_, i) => {
-                        const prop = props[i]
-                        if (!prop) return chalk.redBright(`{${i}}`)
+                const format: string[] = []
+
+                const literalsLength = literalsType.detail.shape.length
+                const expressionsLength = expressionsType.detail.shape.length
+
+                for (let i = 0; i < literalsLength; i++) {
+                    const slice = vm.variableStack.read(ctx.references[0] + 16 * i, 16)
+                    format.push(loadString(slice))
+                    if (i < expressionsLength) {
+                        const prop = expressionsType.detail.shape[i]
                         const type = build.header.reflection.types[prop.type]
-
-                        const value = tuple.slice(prop.offset, type.size)
-
-                        return inspect(serialize(value, type), true, Infinity, true)
-                    })
+                        const value = vm.variableStack.read(ctx.references[0] + expressionsProp.offset + prop.offset, type.size)
+                        format.push(inspect(serialize(value, type), true, Infinity, true))
+                    }
+                }
 
                 // eslint-disable-next-line no-console
-                console.log(format)
+                console.log(format.join(""))
                 vm.resume(MemoryView.empty)
             })
         }
@@ -233,11 +243,6 @@ if (ast instanceof Diagnostic) {
                 vm.resume(MemoryView.from(new Float64Array([ptr, data.byteLength]).buffer))
             })
         })
-
-        const disassembler = new Disassembler(build)
-        for (const disassembly of disassembler) {
-            console.log(stringifyFunctionDisassembly(disassembly))
-        }
 
         vm.directCall(vm.findFunction("main(): Void"), [new Float64Array([5, 25]).buffer], (result) => {
             console.log(result)
