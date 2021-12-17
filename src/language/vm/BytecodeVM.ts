@@ -50,7 +50,6 @@ const TYPES: Record<(typeof Instructions.Types)[Exclude<keyof typeof Instruction
 
 export class BytecodeVM {
     public readonly stack = new Memory()
-    public readonly variableStack = new Memory()
     public readonly heap = new Heap()
     public readonly controlStack: StackFrame[] = []
     public readonly externFunctions = new Map<string, BytecodeVM.ExternFunction>()
@@ -76,7 +75,7 @@ export class BytecodeVM {
         const [offset, type] = MemoryMap.parseAddress(address)
 
         if (type == "variableStack") {
-            return this.variableStack.write(offset, data)
+            return this.stack.write(offset, data)
         } else if (type == "heap") {
             this.heap.memory.write(offset, data)
         } else unreachable()
@@ -86,7 +85,7 @@ export class BytecodeVM {
         const [offset, type] = MemoryMap.parseAddress(address)
 
         if (type == "variableStack") {
-            return this.variableStack.read(offset, size)
+            return this.stack.read(offset, size)
         } else if (type == "data") {
             return new MemoryView(this.data, offset, size)
         } else if (type == "heap") {
@@ -133,7 +132,7 @@ export class BytecodeVM {
                 case Instructions.LOAD: {
                     const ref = ctx.data[ctx.pc]
                     ctx.pc++
-                    const data = this.variableStack.read(ctx.references[ref], subtype)
+                    const data = this.stack.read(ctx.references[ref], subtype)
                     //console.log("Load:", ref, ctx.references[ref], data)
                     this.stack.push(data)
                 } break
@@ -141,7 +140,7 @@ export class BytecodeVM {
                     const ref = ctx.data[ctx.pc]
                     ctx.pc++
                     const data = this.stack.pop(subtype)
-                    this.variableStack.write(ctx.references[ref], data)
+                    this.stack.write(ctx.references[ref], data)
                     //console.log("Store:", ref, ctx.references[ref], data)
                 } break
                 case Instructions.RETURN: {
@@ -359,53 +358,62 @@ export class BytecodeVM {
         if (!func) throw new Error("Function index out of range")
         //console.log("Called function", [func.name])
         if (!func) throw unreachable()
-        let size = 0
-        let offset = this.variableStack.length
+        let variableSize = 0
+        let offset = this.stack.length
 
         const references: number[] = []
 
-        for (const scope of [func.arguments, func.variables, func.returns]) {
+        let argumentsSize = 0
+        { // Set references to arguments on the stack
+            for (const argument of func.arguments) {
+                argumentsSize += argument.size
+            }
+
+            const argumentStart = this.stack.length - argumentsSize
+            argumentsSize = 0
+            for (const argument of func.arguments) {
+                references.push(argumentStart + argumentsSize)
+                argumentsSize += argument.size
+            }
+        }
+
+        // Allocate space on the stack for variables and returns
+        for (const scope of [func.variables, func.returns]) {
             for (const variable of scope) {
                 references.push(offset)
-                size += variable.size
+                variableSize += variable.size
                 offset += variable.size
             }
         }
 
-        this.variableStack.expand(size)
+        this.stack.expand(variableSize)
 
-        for (let i = func.arguments.length - 1; i >= 0; i--) {
-            const arg = func.arguments[i]
-            const offset = references[i]
-            const data = this.stack.pop(arg.size)
-            this.variableStack.write(offset, data)
-        }
-
+        const fullSize = argumentsSize + variableSize
         const entry: StackFrame = {
             function: func,
             data: new Uint32Array(this.data.slice(func.offset, func.offset + func.size)),
             pc: 0,
             references,
-            size,
-            stackLen: this.stack.length
+            size: fullSize,
+            stackLen: this.stack.length - fullSize
         }
 
         return entry
     }
 
     protected makeReturn(entry: StackFrame) {
-        if (this.stack.length != entry.stackLen) throw new Error("Stack length was not returned to the same value as when the function started (" + this.stack.length + "," + entry.stackLen + ")")
-        const referenceOffset = entry.function.arguments.length + entry.function.variables.length
+        const expectedStackLength = entry.stackLen + entry.size
+        if (this.stack.length != expectedStackLength) throw new Error("Stack length was not returned to the same value as when the function started (" + this.stack.length + "," + expectedStackLength + ")")
         let returnSize = 0
-        for (let i = 0; i < entry.function.returns.length; i++) {
-            const offset = entry.references[referenceOffset + i]
-            const size = entry.function.returns[i].size
-            const data = this.variableStack.read(offset, size)
-            this.stack.push(data)
-            returnSize += data.length
+        for (const returns of entry.function.returns) {
+            returnSize += returns.size
         }
 
-        this.variableStack.shrink(entry.size)
+        const returnValue = this.stack.read(this.stack.length - returnSize, returnSize).clone()
+
+        this.stack.shrink(entry.size)
+        this.stack.push(returnValue)
+
         return returnSize
     }
 

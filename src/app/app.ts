@@ -140,7 +140,7 @@ if (ast instanceof Diagnostic) {
         const vm = new BytecodeVM(build.header, build.data)
 
         const print: BytecodeVM.ExternFunction = (ctx, vm) => {
-            const value = vm.variableStack.read(ctx.references[0], ctx.function.arguments[0].size)
+            const value = vm.stack.read(ctx.references[0], ctx.function.arguments[0].size)
             console.log(chalk.cyanBright("==>"), value)
             vm.resume(MemoryView.empty)
         }
@@ -149,7 +149,7 @@ if (ast instanceof Diagnostic) {
         vm.externFunctions.set("print(msg: Char): Void", print)
         vm.externFunctions.set("print(msg: *Number): Void", print)
         vm.externFunctions.set("print(msg: []Char): Void", (ctx, vm) => {
-            const [ptr, size] = vm.variableStack.read(ctx.references[0], ctx.function.arguments[0].size).as(Float64Array)
+            const [ptr, size] = vm.stack.read(ctx.references[0], ctx.function.arguments[0].size).as(Float64Array)
             const msg = new TextDecoder().decode(vm.loadPointer(ptr, size).as(Uint8Array))
             console.log(chalk.cyanBright("==>"), msg)
 
@@ -217,12 +217,12 @@ if (ast instanceof Diagnostic) {
                 const expressionsLength = expressionsType.detail!.props!.length
 
                 for (let i = 0; i < literalsLength; i++) {
-                    const slice = vm.variableStack.read(ctx.references[0] + 16 * i, 16)
+                    const slice = vm.stack.read(ctx.references[0] + 16 * i, 16)
                     format.push(loadString(slice))
                     if (i < expressionsLength) {
                         const prop = expressionsType.detail!.props![i]
                         const type = build.header.reflection.types[prop.type]
-                        const value = vm.variableStack.read(ctx.references[0] + expressionsProp.offset + prop.offset, type.size)
+                        const value = vm.stack.read(ctx.references[0] + expressionsProp.offset + prop.offset, type.size)
                         format.push(inspect(serialize(value, type), true, Infinity, true))
                     }
                 }
