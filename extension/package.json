@@ -1,0 +1,34 @@
+{
+    "name": "lenk-language",
+    "displayName": "lenk-language",
+    "description": "",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.63.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "lenk",
+                "aliases": [
+                    "Lenk",
+                    "lenk"
+                ],
+                "extensions": [
+                    ".lenk"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "lenk",
+                "scopeName": "source.lenk",
+                "path": "./syntaxes/lenk.tmLanguage.json"
+            }
+        ]
+    }
+}

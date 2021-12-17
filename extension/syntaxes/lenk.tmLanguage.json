@@ -1,0 +1,103 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Lenk",
+    "scopeName": "source.lenk",
+    "patterns": [
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#numbers"
+        },
+        {
+            "include": "#types"
+        },
+        {
+            "include": "#variables"
+        },
+        {
+            "include": "#comments"
+        }
+    ],
+    "repository": {
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.lenk",
+                    "match": "\\b(if|while|for|return|var|function|namespace|struct|template|extern)\\b"
+                },
+                {
+                    "name": "variable.language.lenk",
+                    "match": "\\b(this)\\b"
+                },
+                {
+                    "name": "storage.modifier.iss.lenk",
+                    "match": " is [a-z]+"
+                }
+            ]
+        },
+        "strings": {
+            "name": "string.quoted.double.lenk",
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.lenk",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        "types": {
+            "patterns": [
+                {
+                    "name": "support.class.lenk",
+                    "match": "\\b[A-Z][\\w]*\\b"
+                }
+            ]
+        },
+        "variables": {
+            "patterns": [
+                {
+                    "name": "entity.name.function.lenk",
+                    "match": "\\b[a-z@][\\w]*\\b()(?=\\()"
+                },
+                {
+                    "name": "variable.other.lenk",
+                    "match": "\\b[a-z@][\\w]*\\b"
+                }
+            ]
+        },
+        "numbers": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.hex.lenk",
+                    "match": "\\b0x?[\\da-fA-F]+\\b"
+                },
+                {
+                    "name": "constant.numeric.binary.lenk",
+                    "match": "\\b0b?[01]+\\b"
+                },
+                {
+                    "name": "constant.numeric.decimal.lenk",
+                    "match": "\\b\\d[\\d\\.]*(?:[eE][+-]?\\d+)?\\b"
+                }
+            ]
+        },
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-slash.lenk",
+                    "match": "\\/\\/.*"
+                },
+                {
+                    "name": "comment.block",
+                    "begin": "\\/\\*",
+                    "end": "\\*\\/"
+                }
+            ]
+        }
+    }
+}
