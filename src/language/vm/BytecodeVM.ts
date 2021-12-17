@@ -36,9 +36,12 @@ namespace MemoryMap {
 interface StackFrame {
     function: ExecutableHeader.Function
     data: Uint32Array
+    /** Contains the real addresses of function arguments, variables and returns */
     references: number[]
     pc: number
+    /** Size of the frame variables on the stack */
     size: number
+    /** Length of the stack when this frame was created. The length is asserted to be the same on return. */
     stackLen: number
     callback?: (data: MemoryView) => void
 }
