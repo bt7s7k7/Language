@@ -23,7 +23,7 @@ export class Pointer extends InstanceType {
 
     public getDetail(debug: DebugInfo.Builder) {
         return {
-            type: debug.type(this.type).name
+            base: debug.type(this.type).name
         }
     }
 

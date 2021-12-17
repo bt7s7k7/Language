@@ -6,7 +6,7 @@ export abstract class Type {
         return other == this
     }
 
-    public getDetail(debug: DebugInfo.Builder): any {
+    public getDetail(debug: DebugInfo.Builder): Type.Detail | null {
         return null
     }
 
@@ -19,6 +19,10 @@ export abstract class Type {
 
 export namespace Type {
     export const TYPE = new class TypeType extends Type { constructor() { super(Span.native, "Type", Type.NOT_INSTANTIABLE) } }
+    export interface Detail {
+        base?: string
+        props?: { type: string, offset: number, name: string }[]
+    }
 
     export const NOT_INSTANTIABLE = -1
 }

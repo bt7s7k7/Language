@@ -10,8 +10,7 @@ export class Struct extends InstanceType {
 
     public getDetail(debug: DebugInfo.Builder) {
         return {
-            struct: true,
-            shape: this.properties.map(v => ({ type: v.type.name, offset: v.offset, name: v.name }))
+            props: this.properties.map(v => ({ type: v.type.name, offset: v.offset, name: v.name }))
         }
     }
 

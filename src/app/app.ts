@@ -171,7 +171,7 @@ if (ast instanceof Diagnostic) {
                 function serialize(value: MemoryView, type: DebugInfo.TypeInfo) {
                     if (type.name == "[]Char") return loadString(value)
                     if (type.name.startsWith("[]")) return serializeSlice(value, type)
-                    if (type.detail?.shape) return serializeStruct(value, type)
+                    if (type.detail?.props) return serializeStruct(value, type)
                     if (type.name == "Number") return value.as(Float64Array)[0]
                     if (type.name == "Char") return value.as(Uint8Array)[0]
                     if (type.name[0] == "*") return { [inspect.custom]: () => chalk.greenBright(`(${type.name}) 0x${value.as(Float64Array)[0].toString(16)}`) }
@@ -182,7 +182,7 @@ if (ast instanceof Diagnostic) {
                 function serializeStruct(value: MemoryView, struct: DebugInfo.TypeInfo) {
                     const result: Record<string, any> = {}
 
-                    for (let { name, offset, type } of struct.detail.shape) {
+                    for (let { name, offset, type } of struct.detail!.props!) {
                         const typeInfo = build.header.reflection.types[type]
                         if (!typeInfo) throw new Error(`Cannot get type info of "${type}"`)
                         const propertyValue = value.slice(offset, typeInfo.size)
@@ -194,8 +194,8 @@ if (ast instanceof Diagnostic) {
                 }
 
                 function serializeSlice(slice: MemoryView, type: DebugInfo.TypeInfo) {
-                    const elementType = build.header.reflection.types[type.detail.type]
-                    if (!elementType) throw new Error(`Cannot get type info of "${type.detail.type}"`)
+                    const elementType = build.header.reflection.types[type.detail!.base!]
+                    if (!elementType) throw new Error(`Cannot get type info of "${type.detail!.base!}"`)
                     const result: any[] = []
                     const [start, length] = slice.as(Float64Array)
 
@@ -207,20 +207,20 @@ if (ast instanceof Diagnostic) {
                     return result
                 }
 
-                const [literalsProp, expressionsProp] = type.detail.shape
+                const [literalsProp, expressionsProp] = type.detail!.props!
                 const literalsType = build.header.reflection.types[literalsProp.type]
                 const expressionsType = build.header.reflection.types[expressionsProp.type]
 
                 const format: string[] = []
 
-                const literalsLength = literalsType.detail.shape.length
-                const expressionsLength = expressionsType.detail.shape.length
+                const literalsLength = literalsType.detail!.props!.length
+                const expressionsLength = expressionsType.detail!.props!.length
 
                 for (let i = 0; i < literalsLength; i++) {
                     const slice = vm.variableStack.read(ctx.references[0] + 16 * i, 16)
                     format.push(loadString(slice))
                     if (i < expressionsLength) {
-                        const prop = expressionsType.detail.shape[i]
+                        const prop = expressionsType.detail!.props![i]
                         const type = build.header.reflection.types[prop.type]
                         const value = vm.variableStack.read(ctx.references[0] + expressionsProp.offset + prop.offset, type.size)
                         format.push(inspect(serialize(value, type), true, Infinity, true))

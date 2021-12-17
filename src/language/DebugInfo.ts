@@ -102,7 +102,7 @@ export namespace DebugInfo {
     export interface TypeInfo {
         name: string
         size: number
-        detail: any
+        detail: Type.Detail | null
         template: string | null
     }
 
