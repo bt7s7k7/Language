@@ -1,4 +1,6 @@
 import chalk = require("chalk")
+import { readFileSync } from "fs"
+import { join } from "path"
 import { createInterface } from "readline"
 import { inspect, TextDecoder, TextEncoder } from "util"
 import { unreachable } from "../comTypes/util"
@@ -69,37 +71,11 @@ function stringifyFunctionDisassembly(func: FunctionDisassembly) {
 const rl = createInterface(process.stdin, process.stdout)
 rl.pause()
 
-const ast = Parser.parse(new SourceFile("<anon>",
-    /* `
- function fibonacci(i: int) {
-     if (i == 0 || i == 1) return 0
-     return fibonacci(i - 1) + fibonacci(i - 2)
- }
- 
- function main() {
-     return fibonacci(6)
-    }
-    
-    function print(msg: *Number): Void => extern
-    ` */
-    /* javascript */`
+const sourcePath = process.argv[2] ? join(process.cwd(), process.argv[2]) : join(__dirname, "../../test/units/hello.lenk")
+const source = readFileSync(sourcePath).toString()
 
-    template(T is any 1)
-    function printf(format: []Char, args: T): Void => extern
+const ast = Parser.parse(new SourceFile(sourcePath, source))
 
-    function main() {
-        var arr = []Number.create(10)
-        var i = 0
-        while (i < 10) {
-            arr[i] = i
-            i = i + 1
-        }
-
-        printf("{0}", .[arr])
-    }
-
-    `
-))
 if (ast instanceof Diagnostic) {
     console.log(inspect(ast, undefined, Infinity, true))
 } else {

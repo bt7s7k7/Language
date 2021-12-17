@@ -1,0 +1,6 @@
+template(T is any 1)
+function printf(format: []Char, args: T): Void => extern
+
+function main() {
+    printf("Hello world", .[])    
+}
