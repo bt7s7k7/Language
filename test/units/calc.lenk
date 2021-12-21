@@ -1,0 +1,30 @@
+template(T is any 0)
+function printf(templ: T): Void => extern
+
+function readline(): []Char => extern
+
+function parseInt(string: []Char) {
+    var result = 0
+
+    for (var i = 0; i < string.length; i = i + 1) {
+        result = result * 10 + Number(string[i] - '0')
+    }
+
+    return result
+}
+
+function main() {
+    printf(`Enter first number:`)
+    var firstString = readline()
+    
+    printf(`Enter second number:`)
+    var secondString = readline()
+
+    var first = parseInt(firstString)
+    var second = parseInt(secondString)
+
+    printf(`${first} + ${second} = ${first + second}`)
+
+    firstString.free()
+    secondString.free()
+}

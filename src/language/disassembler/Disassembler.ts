@@ -82,11 +82,25 @@ export class Disassembler {
                 }
             }
 
+            let formattedSubtype: string | null = null
+            if (instruction.subtype) {
+                if (instruction.subtype == "size") {
+                    formattedSubtype = subtype.toString()
+                } else {
+                    const primaryTypeCode = subtype & 0xff
+                    formattedSubtype = Instructions.Types.names[primaryTypeCode] ?? `<inv>${primaryTypeCode.toString()}`
+                    const secondaryTypeCode = (subtype >> 8) & 0xff
+                    if (secondaryTypeCode) {
+                        formattedSubtype += ", " + Instructions.Types.names[secondaryTypeCode] ?? `<inv>${secondaryTypeCode.toString()}`
+                    }
+                }
+            }
+
             instructions.push({
                 arguments: args,
                 instruction,
                 offset: start,
-                subtype: instruction.subtype ? (instruction.subtype == "size" ? subtype.toString() : Instructions.Types.names[subtype] ?? subtype.toString()) : null,
+                subtype: formattedSubtype,
                 label: labelLookup[offset]
             })
         }

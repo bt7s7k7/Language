@@ -31,6 +31,7 @@ export namespace Instructions {
     export const MUL = 103
     export const DIV = 104
     export const MOD = 105
+    export const NUM_CNV = 116
     export const EQ = 151
     export const LT = 152
     export const GT = 153
@@ -42,7 +43,7 @@ export namespace Instructions {
     export const BR = 52
 
     export namespace Types {
-        export const UINT32 = 5
+        export const UINT8 = 5
         export const FLOAT64 = 10
 
         export const names: Partial<Record<number, string>> = {
@@ -80,6 +81,7 @@ export namespace Instructions {
         [GTE]: { label: "gte", subtype: "type" },
         [BR_TRUE]: { label: "br_true", subtype: "type", args: ["jump"] },
         [BR_FALSE]: { label: "br_false", subtype: "type", args: ["jump"] },
-        [BR]: { label: "br", args: ["jump"] }
+        [BR]: { label: "br", args: ["jump"] },
+        [NUM_CNV]: { label: "num_cnv", subtype: "type" }
     }
 }

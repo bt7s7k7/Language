@@ -48,7 +48,7 @@ interface StackFrame {
 
 const TYPES: Record<(typeof Instructions.Types)[Exclude<keyof typeof Instructions.Types, "names">], AnyTypedArrayCtor> = {
     [Instructions.Types.FLOAT64]: Float64Array,
-    [Instructions.Types.UINT32]: Uint32Array
+    [Instructions.Types.UINT8]: Uint8Array
 }
 
 export class BytecodeVM {
@@ -346,6 +346,16 @@ export class BytecodeVM {
                     const data = this.stack.pop(subtype * 2).clone()
                     this.stack.push(data.slice(subtype, subtype))
                     this.stack.push(data.slice(0, subtype))
+                } break
+                case Instructions.NUM_CNV: {
+                    const sourceTypeCode = subtype & 0xff
+                    const destTypeCode = (subtype >> 8) & 0xff
+                    const sourceType = TYPES[sourceTypeCode as keyof typeof TYPES]
+                    if (!sourceType) throw new Error("Invalid type")
+                    const destType = TYPES[destTypeCode as keyof typeof TYPES]
+                    if (!destType) throw new Error("Invalid type")
+                    const source = this.stack.pop(sourceType.BYTES_PER_ELEMENT).as(sourceType)[0]
+                    this.stack.pushConst(new destType([source]).buffer)
                 } break
                 default: {
                     throw new Error("Invalid instruction")

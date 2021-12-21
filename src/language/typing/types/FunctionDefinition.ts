@@ -9,6 +9,7 @@ export class FunctionDefinition extends Type {
         for (const overload of this.overloads) {
             const match = overload.match(span, args, context)
             if (match instanceof Diagnostic) {
+                match.message = overload.name + ": " + match.message
                 diagnostics.push(match)
             } else if (match instanceof Array) {
                 diagnostics.push(...match)

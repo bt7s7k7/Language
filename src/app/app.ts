@@ -81,7 +81,13 @@ if (ast instanceof Diagnostic) {
 } else {
     const globalScope = new Typing.Scope()
     globalScope.register("Number", Primitives.Number.TYPE)
+    globalScope.registerMany("Number", {
+        "@invoke": new FunctionDefinition(Span.native, "@invoke").addOverload(Primitives.Number.CTOR)
+    })
     globalScope.register("Char", Primitives.Char.TYPE)
+    globalScope.registerMany("Char", {
+        "@invoke": new FunctionDefinition(Span.native, "@invoke").addOverload(Primitives.Char.CTOR)
+    })
     globalScope.register("Void", Void.TYPE)
 
     for (const operatorName of [

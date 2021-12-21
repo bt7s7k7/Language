@@ -6,7 +6,8 @@ import { Instructions } from "../vm/Instructions"
 import { FunctionIRBuilder } from "./FunctionIRBuilder"
 
 const TYPE_LOOKUP = new Map<Type, number>([
-    [Primitives.Number.TYPE, Instructions.Types.FLOAT64]
+    [Primitives.Number.TYPE, Instructions.Types.FLOAT64],
+    [Primitives.Char.TYPE, Instructions.Types.UINT8]
 ])
 
 export namespace EmissionUtil {

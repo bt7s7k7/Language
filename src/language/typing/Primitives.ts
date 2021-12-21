@@ -1,12 +1,18 @@
+import { unreachable } from "../../comTypes/util"
 import { Diagnostic } from "../Diagnostic"
+import { EmissionUtil } from "../emission/EmissionUtil"
 import { FunctionIRBuilder } from "../emission/FunctionIRBuilder"
 import { Span } from "../Span"
 import { Instructions } from "../vm/Instructions"
 import { AnyTypedArrayCtor } from "../vm/types"
+import { IntrinsicFunction } from "./intrinsic/IntrinsicFunction"
+import { Never } from "./types/base"
 import { ConstExpr } from "./types/ConstExpr"
 import { InstanceType } from "./types/InstanceType"
 import { SpecificFunction } from "./types/SpecificFunction"
+import { normalizeType } from "./util"
 import { Value } from "./Value"
+import { Invocation } from "./values/Invocation"
 
 function createNumber(name: string, size: number, container: AnyTypedArrayCtor) {
     const TYPE = new class Number extends InstanceType {
@@ -53,8 +59,35 @@ function createNumber(name: string, size: number, container: AnyTypedArrayCtor) 
         ) { super(Span.native, name) }
     }
 
+    const CTOR = new class PrimitiveCtor extends IntrinsicFunction {
+        public match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): Diagnostic | SpecificFunction.Signature | Diagnostic[] {
+            let type = normalizeType(args[0].type ?? Never.TYPE)
+            if (!EmissionUtil.tryGetTypeCode(type)) return new Diagnostic(`Type "${type.name}" is not primitive`, args[0].span)
+
+            return {
+                target: this,
+                arguments: [{ name: "source", type }],
+                result: TYPE
+            }
+        }
+
+        public emit(builder: FunctionIRBuilder, invocation: Invocation): number {
+            invocation.args[0].emit(builder)
+
+            const source = invocation.signature.arguments[0].type
+            const sourceCode = EmissionUtil.tryGetTypeCode(source) ?? unreachable()
+
+            builder.pushInstruction(Instructions.NUM_CNV, sourceCode | (EmissionUtil.getTypeCode(TYPE) << 8))
+
+            return size
+        }
+
+        constructor() { super(Span.native, name) }
+    }
+
     return {
         TYPE,
+        CTOR,
         Constant,
         CONST_ADD: new ConstBinaryOperation("__operator_add", (a, b) => a + b),
         CONST_SUB: new ConstBinaryOperation("__operator_sub", (a, b) => a - b),
