@@ -70,6 +70,7 @@ const MAX_PRESENTENCE = 7
 
 const INDEX_OPERATOR: OperatorDefinition = { name: "index", presentence: 0, text: "[", type: "suffix" }
 const REINTERPRET_OPERATOR: OperatorDefinition = { name: "reinterpret", presentence: 0, text: "!as", type: "suffix" }
+const DEFER_OPERATOR: OperatorDefinition = { name: "defer", presentence: 0, text: "!defer", type: "suffix" }
 
 export namespace Parser {
     export function parse(file: SourceFile) {
@@ -623,6 +624,13 @@ export namespace Parser {
                         const operator = ret.addChild(new OperatorNode(start.span(3), REINTERPRET_OPERATOR.name))
                         operator.addChildren(args)
                         operator.meta = REINTERPRET_OPERATOR
+
+                        continue
+                    }
+
+                    if (consume("!defer")) {
+                        const operator = ret.addChild(new OperatorNode(start.span(6), DEFER_OPERATOR.name))
+                        operator.meta = DEFER_OPERATOR
 
                         continue
                     }

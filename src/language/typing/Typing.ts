@@ -75,19 +75,20 @@ class FunctionConstruct {
     public implicitReturnType: Type | null = null
 
     public setReturnType(value: Return) {
-        if (this.explicitReturnType && !value.body.type.assignableTo(this.explicitReturnType)) throw new ParsingError(notAssignable(value.body.type, this.explicitReturnType, value.span))
+        const type = normalizeType(value.body.type)
+        if (this.explicitReturnType && !type.assignableTo(this.explicitReturnType)) throw new ParsingError(notAssignable(type, this.explicitReturnType, value.span))
         if (this.implicitReturnType == null) {
-            this.implicitReturnType = value.body.type
+            this.implicitReturnType = type
             return
         }
 
-        if (value.body.type.assignableTo(this.implicitReturnType)) return
-        if (this.implicitReturnType.assignableTo(value.body.type)) {
-            this.implicitReturnType = value.body.type
+        if (type.assignableTo(this.implicitReturnType)) return
+        if (this.implicitReturnType.assignableTo(type)) {
+            this.implicitReturnType = type
             return
         }
 
-        throw new ParsingError(notAssignable(value.body.type, this.implicitReturnType, value.span))
+        throw new ParsingError(notAssignable(type, this.implicitReturnType, value.span))
     }
 
     constructor(
@@ -250,6 +251,10 @@ export namespace Typing {
                     const template = operands[0]
                     operands.shift()
                     handler = template.specialization
+                }
+
+                if (node.name == "defer" && operands.length == 1 && operands[0] instanceof Value && !(operands[0] instanceof Reference)) {
+                    operands[0] = createTempVar(node.span, operands[0], scope)
                 }
 
                 return createInvocation(node.span, handler, operands, scope)

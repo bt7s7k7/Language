@@ -29,6 +29,7 @@ export namespace Emitter {
                 for (const overload of symbol.overloads) {
                     if (overload instanceof ProgramFunction) {
                         const builder = new FunctionIRBuilder(overload.name)
+                        builder.pushScope("root_scope")
 
                         for (const arg of overload.args) {
                             if (arg.type.size == Type.NOT_INSTANTIABLE) throw new EmittingError(new Diagnostic("Type is not instantiable", arg.span))
@@ -44,6 +45,7 @@ export namespace Emitter {
                         }
 
                         if (overload.result == Void.TYPE && builder.lastInstruction?.code != Instructions.RETURN) {
+                            builder.popScope("all", false)
                             builder.pushInstruction(Instructions.RETURN)
                         }
 

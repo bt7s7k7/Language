@@ -35,7 +35,7 @@ export class Pointer extends InstanceType {
 function registerPointerMethods(pointer: Pointer, scope: Typing.Scope) {
     scope.registerMany(pointer.name, {
         "alloc": new FunctionDefinition(Span.native, "alloc").addOverload(new Pointer.PointerAlloc(pointer)),
-        "free": new FunctionDefinition(Span.native, "free").addOverload(new Pointer.PointerFree(pointer)),
+        "@dispose": new FunctionDefinition(Span.native, "@dispose").addOverload(new Pointer.PointerFree(pointer)),
     })
 }
 

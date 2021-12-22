@@ -17,6 +17,7 @@ import { IntrinsicMaths } from "../language/typing/intrinsic/IntrinsicMaths"
 import { Primitives } from "../language/typing/Primitives"
 import { Type } from "../language/typing/Type"
 import { REINTERPRET_OPERATOR, Void } from "../language/typing/types/base"
+import { DEFER } from "../language/typing/types/DeferOperator"
 import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
 import { Pointer } from "../language/typing/types/Pointer"
 import { ProgramFunction } from "../language/typing/types/ProgramFunction"
@@ -122,6 +123,8 @@ if (ast instanceof Diagnostic) {
     globalScope.register("@assign", new FunctionDefinition(Span.native, "@assign")
         .addOverload(new IntrinsicMaths.Assignment())
     )
+
+    globalScope.register("@defer", new FunctionDefinition(Span.native, "@defer").addOverload(DEFER))
 
     globalScope.register("@as_ptr", new FunctionDefinition(Span.native, "@as_ptr").addOverload(Pointer.AS_POINTER_OPERATOR))
     globalScope.register("@addr", new FunctionDefinition(Span.native, "@addr").addOverload(Pointer.ADDRESS_OF_OPERATOR))

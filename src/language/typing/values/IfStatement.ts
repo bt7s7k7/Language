@@ -12,17 +12,22 @@ export class IfStatement extends Value {
         const subtype = EmissionUtil.getTypeCode(type)
         EmissionUtil.safeEmit(builder, type.size, this.predicate)
 
+
         const id = builder.nextID()
+        builder.pushScope(`if_${id}`)
         const ifFalseLabel = `_if_${id}_else`
         const endLabel = `_if_${id}_else_end`
 
         builder.pushInstruction(Instructions.BR_FALSE, subtype, ["l:" + ifFalseLabel])
         this.body.emit(builder)
+        builder.popScope(1, true)
         if (this.bodyElse) {
+            builder.pushScope(`if_else_${id}`)
             builder.pushInstruction(Instructions.BR, 0, ["l:" + endLabel])
             builder.pushLabel(ifFalseLabel)
             this.bodyElse.emit(builder)
             builder.pushLabel(endLabel)
+            builder.popScope(1, true)
         } else {
             builder.pushLabel(ifFalseLabel)
         }

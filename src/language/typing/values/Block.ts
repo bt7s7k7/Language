@@ -10,10 +10,25 @@ export class Block extends Value {
         for (const statement of this.statements) {
             const size = statement.emit(builder)
             if (size > 0) {
+                // Skip redundant load instruction
                 if (builder.lastInstruction && builder.lastInstruction.code == Instructions.LOAD && builder.lastInstruction.subtype == size) {
                     builder.popInstruction()
                 } else {
                     builder.pushInstruction(Instructions.DROP, size)
+                }
+
+                // Optimization for statement level assignments, by default they return the
+                // assigned value by copy so we can remove the copy and drop
+                if (builder.instructions.length >= 3) {
+                    const [copy, store, drop] = builder.instructions.slice(-3)
+                    if (
+                        "code" in copy && copy.code == Instructions.STACK_COPY && copy.subtype == size &&
+                        "code" in store && store.code == Instructions.STORE && store.subtype == size &&
+                        "code" in drop && drop.code == Instructions.DROP && drop.subtype == size
+                    ) {
+                        builder.instructions.splice(builder.instructions.length - 1, 1)
+                        builder.instructions.splice(builder.instructions.length - 2, 1)
+                    }
                 }
             }
         }

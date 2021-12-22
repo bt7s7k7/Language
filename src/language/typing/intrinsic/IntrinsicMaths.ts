@@ -112,26 +112,27 @@ export namespace IntrinsicMaths {
     export const OR = new ShortCircuitOperation("__operator_or", true)
 
     export class Assignment extends Operation implements IIntrinsicRefFunction {
-        public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
+        public override emit(builder: FunctionIRBuilder, invocation: Invocation, noCopy = false) {
             const type = normalizeType(invocation.type)
             const variable = invocation.args[0]
             if (!isRefValue(variable)) throw new Error(`Assignment target '${variable.constructor.name}' is not a ref value`)
 
             EmissionUtil.safeEmit(builder, type.size, invocation.args[1])
+            if (!noCopy) builder.pushInstruction(Instructions.STACK_COPY, type.size)
             variable.emitStore(builder)
 
-            return 0
+            return type.size
         }
 
         public emitStore(builder: FunctionIRBuilder, invocation: Invocation): void {
-            this.emit(builder, invocation)
+            this.emit(builder, invocation, !!"dont copy")
 
             if (!isRefValue(invocation.args[0])) unreachable()
             invocation.args[0].emitStore(builder)
         }
 
         public emitPtr(builder: FunctionIRBuilder, invocation: Invocation): void {
-            this.emit(builder, invocation)
+            this.emit(builder, invocation, !!"dont copy")
 
             if (!isRefValue(invocation.args[0])) unreachable()
             invocation.args[0].emitPtr(builder)

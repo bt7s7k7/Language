@@ -18,10 +18,12 @@ namespace MemoryMap {
     export function prefixAddress(address: number, segment: (typeof SEGMENTS)[number]) {
         let i = 0
         while (SEGMENTS[i] != segment) i++
-        return address + SEGMENT_SIZE * i
+        return address + SEGMENT_SIZE * i + 1024
     }
 
     export function parseAddress(address: number) {
+        address -= 1024
+        if (address < 0) return [0, "null"] as const
         let i = 0
         while (address >= SEGMENT_SIZE) {
             i++
@@ -77,6 +79,8 @@ export class BytecodeVM {
     public storePointer(address: number, data: MemoryView) {
         const [offset, type] = MemoryMap.parseAddress(address)
 
+        if (type == "null") throw new Error("Tried to store into null page")
+
         if (type == "variableStack") {
             return this.stack.write(offset, data)
         } else if (type == "heap") {
@@ -86,6 +90,8 @@ export class BytecodeVM {
 
     public loadPointer(address: number, size: number) {
         const [offset, type] = MemoryMap.parseAddress(address)
+
+        if (type == "null") throw new Error("Tried to load from null page")
 
         if (type == "variableStack") {
             return this.stack.read(offset, size)
@@ -103,6 +109,7 @@ export class BytecodeVM {
 
     public free(ptr: number) {
         const [offset, type] = MemoryMap.parseAddress(ptr)
+        if (type == "null") return
         if (type != "heap") throw new Error("Cannot free address from " + type)
         this.heap.free(offset)
     }
