@@ -36,6 +36,14 @@
                 {
                     "name": "storage.modifier.iss.lenk",
                     "match": " is [a-z]+"
+                },
+                {
+                    "match": "!(as|defer)",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.control.lenk"
+                        }
+                    }
                 }
             ]
         },
