@@ -66,7 +66,7 @@ export namespace Instructions {
         [STORE_PTR]: { label: "store_ptr", subtype: "size" },
         [MEMBER]: { label: "member", subtype: "size", args: ["raw", "raw"] },
         [ALLOC]: { label: "alloc", subtype: "size" },
-        [FREE]: { label: "free", subtype: "size" },
+        [FREE]: { label: "free" },
         [ALLOC_ARR]: { label: "alloc_arr", subtype: "size" },
         [STACK_COPY]: { label: "stack_copy", subtype: "size" },
         [STACK_SWAP]: { label: "stack_swap", subtype: "size" },
