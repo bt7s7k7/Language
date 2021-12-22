@@ -14,15 +14,19 @@ export class MemberAccess extends Value implements IRefValue {
             this.emitPtr(builder)
             builder.pushInstruction(Instructions.LOAD_PTR, this.type.size)
             return this.type.size
-        } else return unreachable()
+        } else {
+            return unreachable(`MemberAccess target ${this.target.constructor.name} of "${this.target.type.name}" should be a ref value`)
+        }
     }
 
     public emitPtr(builder: FunctionIRBuilder) {
         if (!isRefValue(this.target)) throw unreachable()
         this.target.emitPtr(builder)
         const offset = this.steps.reduce((a, v) => a + v.offset, 0)
-        new Primitives.Number.Constant(Span.native, offset).emit(builder)
-        builder.pushInstruction(Instructions.ADD, Instructions.Types.FLOAT64)
+        if (offset != 0) {
+            new Primitives.Number.Constant(Span.native, offset).emit(builder)
+            builder.pushInstruction(Instructions.ADD, Instructions.Types.FLOAT64)
+        }
     }
 
     public emitStore(builder: FunctionIRBuilder) {

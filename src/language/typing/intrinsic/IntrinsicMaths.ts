@@ -1,3 +1,4 @@
+import { unreachable } from "../../../comTypes/util"
 import { Diagnostic } from "../../Diagnostic"
 import { EmissionUtil } from "../../emission/EmissionUtil"
 import { FunctionIRBuilder } from "../../emission/FunctionIRBuilder"
@@ -5,7 +6,7 @@ import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
 import { Primitives } from "../Primitives"
 import { Never } from "../types/base"
-import { isRefValue, Reference } from "../types/Reference"
+import { IIntrinsicRefFunction, isRefValue, Reference } from "../types/Reference"
 import { SpecificFunction } from "../types/SpecificFunction"
 import { normalizeType } from "../util"
 import { Invocation } from "../values/Invocation"
@@ -14,9 +15,9 @@ import { IntrinsicFunction } from "./IntrinsicFunction"
 abstract class Operation extends IntrinsicFunction {
     public match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
         let type = normalizeType(args[0].type ?? Never.TYPE)
-        if (this.requirePrimitive && !EmissionUtil.tryGetTypeCode(type)) return new Diagnostic(`Type "${type.name}" is not primitive`, args[0].span)
+        if (this.config.requirePrimitive && !EmissionUtil.tryGetTypeCode(type)) return new Diagnostic(`Type "${type.name}" is not primitive`, args[0].span)
         const target = Array.from({ length: this.arity }, (_, i): SpecificFunction.Argument => ({ name: "ab"[i], type }))
-        if (this.requireTargetReference) target[0].type = new Reference(target[0].type)
+        if (this.config.requireTargetReference) target[0].type = new Reference(target[0].type)
         const error = SpecificFunction.testArguments(span, target, args)
         if (error) return error
 
@@ -24,15 +25,14 @@ abstract class Operation extends IntrinsicFunction {
             span: this.span,
             target: this,
             arguments: target,
-            result: type
+            result: this.config.resultIsReference ? new Reference(type) : type
         }
     }
 
     constructor(
         name: string,
         public readonly arity: number,
-        public readonly requireTargetReference = false,
-        public readonly requirePrimitive = true,
+        public readonly config: { requireTargetReference?: boolean, requirePrimitive?: boolean, resultIsReference?: boolean } = {},
     ) { super(Span.native, `${name}<T extends any_number>(${Array.from({ length: arity }, () => "T").join(", ")}): T`) }
 }
 
@@ -111,7 +111,7 @@ export namespace IntrinsicMaths {
     export const AND = new ShortCircuitOperation("__operator_and", false)
     export const OR = new ShortCircuitOperation("__operator_or", true)
 
-    export class Assignment extends Operation {
+    export class Assignment extends Operation implements IIntrinsicRefFunction {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
             const type = normalizeType(invocation.type)
             const variable = invocation.args[0]
@@ -123,6 +123,21 @@ export namespace IntrinsicMaths {
             return 0
         }
 
-        constructor() { super("__operator_assign", 2, true, false) }
+        public emitStore(builder: FunctionIRBuilder, invocation: Invocation): void {
+            this.emit(builder, invocation)
+
+            if (!isRefValue(invocation.args[0])) unreachable()
+            invocation.args[0].emitStore(builder)
+        }
+
+        public emitPtr(builder: FunctionIRBuilder, invocation: Invocation): void {
+            this.emit(builder, invocation)
+
+            if (!isRefValue(invocation.args[0])) unreachable()
+            invocation.args[0].emitPtr(builder)
+        }
+
+
+        constructor() { super("__operator_assign", 2, { requireTargetReference: true, requirePrimitive: false, resultIsReference: true }) }
     }
 }

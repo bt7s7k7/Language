@@ -17,7 +17,7 @@ export class VariableDereference extends Value implements IRefValue {
     }
 
     public emitStore(builder: FunctionIRBuilder) {
-        if (this.accessType == "construction" || this.accessType == "declaration") {
+        if (this.accessType == "declaration") {
             builder.registerVariable("variables", this.span, this.variable.name, this.variable.type.size)
         }
 
@@ -35,7 +35,7 @@ export class VariableDereference extends Value implements IRefValue {
     constructor(
         span: Span,
         public readonly variable: Variable,
-        public readonly accessType: "declaration" | "construction" | "dereference" = "dereference"
+        public readonly accessType: "declaration" | "access" = "access"
     ) {
         super(span, new Reference(variable.type))
         if (variable.type.size == Type.NOT_INSTANTIABLE) {

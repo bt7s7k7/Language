@@ -25,6 +25,7 @@ export namespace Instructions {
     export const ALLOC_ARR = 14
     export const STACK_COPY = 16
     export const STACK_SWAP = 17
+    export const STACK_PTR = 18
 
     export const ADD = 101
     export const SUB = 102

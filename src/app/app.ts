@@ -15,9 +15,11 @@ import { Position } from "../language/Position"
 import { Span } from "../language/Span"
 import { IntrinsicMaths } from "../language/typing/intrinsic/IntrinsicMaths"
 import { Primitives } from "../language/typing/Primitives"
+import { Type } from "../language/typing/Type"
 import { REINTERPRET_OPERATOR, Void } from "../language/typing/types/base"
 import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
 import { Pointer } from "../language/typing/types/Pointer"
+import { ProgramFunction } from "../language/typing/types/ProgramFunction"
 import { Slice } from "../language/typing/types/Slice"
 import { Tuple } from "../language/typing/types/Tuple"
 import { Typing } from "../language/typing/Typing"
@@ -40,6 +42,16 @@ Position.prototype._s = Position.prototype[inspect.custom] = function (this: Pos
 MemoryView.prototype[inspect.custom] = function (this: MemoryView) {
     return chalk.yellow(this.toString())
 }
+
+// @ts-ignore
+Type.prototype[inspect.custom] = function (this: Type) {
+    return this.constructor.name + " " + chalk.greenBright(this.name)
+}
+
+// @ts-ignore
+FunctionDefinition.prototype[inspect.custom] = undefined
+// @ts-ignore
+ProgramFunction.prototype[inspect.custom] = undefined
 
 function stringifyFunctionDisassembly(func: FunctionDisassembly) {
     const lines = [

@@ -1,6 +1,22 @@
 template(T is any 0)
 function printf(templ: T): Void => extern
 
+namespace Foo {
+    struct {
+        value: Number
+    }
+
+    function @invoke(value: Number) {
+        var ret: Foo
+        ret.value = 5
+        return ret
+    }
+
+    function print(this) {
+        printf(`Value is ${this.*.value}`)
+    }
+}
+
 function main() {
-    printf(`The answer to ${5} + ${10} is ${5 + 10}`)
+    Foo(5).print()
 }

@@ -96,7 +96,7 @@ export class Assembler {
                         if (index == null) throw new Error("Cannot find function " + arg.substr(2))
                         instructions.push(index)
                     } else {
-                        const index = variableIndexes.get(func.variables.get(arg)!) ?? this.dataLookup.get(arg) ?? unreachable()
+                        const index = variableIndexes.get(func.variables.get(arg)!) ?? this.dataLookup.get(arg) ?? unreachable(`Variable "${arg}" should exist`)
                         if (index == null) throw new Error("Cannot find variable " + arg.substr(2))
                         instructions.push(index)
                     }

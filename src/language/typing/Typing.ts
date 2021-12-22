@@ -146,6 +146,15 @@ export namespace Typing {
         const rootScope = globalScope
         const createdFunctions = new Set<string>()
         const debug = new DebugInfo.Builder()
+        let tempVarCounter = 0
+
+        function createTempVar(span: Span, value: Value, scope: Scope) {
+            const name = "_temp_" + tempVarCounter++
+            const variable = new Variable(span, value.type, name)
+            scope.register(name, variable)
+            const handler = (scope.get("@assign") ?? unreachable()) as FunctionDefinition
+            return createInvocation(span, handler, [new VariableDereference(span, variable, "declaration"), value], scope)
+        }
 
         function createConstant(constexpr: ConstExpr) {
             if (constexpr.type == Primitives.Number.TYPE) return new Primitives.Number.Constant(constexpr.span, constexpr.value, constexpr)
@@ -299,7 +308,7 @@ export namespace Typing {
                 if (!body) return new VariableDereference(node.span, variable, "declaration")
 
                 const handler = (scope.get("@assign") ?? unreachable()) as FunctionDefinition
-                return createInvocation(node.span, handler, [new VariableDereference(node.span, variable, "construction"), body], scope)
+                return createInvocation(node.span, handler, [new VariableDereference(node.span, variable, "declaration"), body], scope)
             } else if (node instanceof InvocationNode) {
                 const target = parseExpressionNode(node.target, scope)
                 const operands = node.args.map(v => parseExpressionNode(v, scope))
@@ -316,9 +325,12 @@ export namespace Typing {
 
                     if (target instanceof MethodAccess) {
                         const handler = target.method
-                        const self = target.target
+                        let self = target.target
                         if (self) {
-                            if (!(self.type instanceof Reference)) throw new ParsingError(new Diagnostic(`Cannot call a method on non-ref value`, node.span))
+                            if (!(self.type instanceof Reference)) {
+                                self = createTempVar(self.span, self.steps.length == 0 ? self.target : self, scope) as never
+                            }
+
                             const addressOfOperator = scope.get("@addr")
                             if (!(addressOfOperator instanceof FunctionDefinition)) throw unreachable()
                             operands.unshift(createInvocation(node.span, addressOfOperator, [self], scope))
