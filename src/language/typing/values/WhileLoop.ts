@@ -14,10 +14,21 @@ export class WhileLoop extends Value {
         const startLabel = `_while_${id}_start`
         const endLabel = `_while_${id}_end`
 
+        builder.pushScope(`while_predicate_${id}`)
+
         builder.pushLabel(startLabel)
         EmissionUtil.safeEmit(builder, type.size, this.predicate)
+
+        builder.popScope(1, true)
+
         builder.pushInstruction(Instructions.BR_FALSE, subtype, ["l:" + endLabel])
+
+        builder.pushScope(`while_body_${id}`)
+
         this.body.emit(builder)
+
+        builder.popScope(1, true)
+
         builder.pushInstruction(Instructions.BR, 0, ["l:" + startLabel])
         builder.pushLabel(endLabel)
 

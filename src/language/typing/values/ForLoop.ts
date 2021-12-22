@@ -13,21 +13,36 @@ export class ForLoop extends Value {
         const incrementLabel = `_for_${id}_inc`
         const endLabel = `_for_${id}_end`
 
+        builder.pushScope(`for_init_${id}`)
+
         this.initializer?.emit(builder)
 
         builder.pushLabel(startLabel)
         if (this.predicate) {
+            builder.pushScope(`for_predicate_${id}`)
+
             const type = this.predicate.type
             const subtype = EmissionUtil.getTypeCode(type)
 
             EmissionUtil.safeEmit(builder, type.size, this.predicate)
+
+            builder.popScope(1, true)
+
             builder.pushInstruction(Instructions.BR_FALSE, subtype, ["l:" + endLabel])
         }
+
+        builder.pushScope(`for_body_${id}`)
+
         this.body.emit(builder)
         builder.pushLabel(incrementLabel)
         this.increment?.emit(builder)
+
+        builder.popScope(1, true)
+
         builder.pushInstruction(Instructions.BR, 0, ["l:" + startLabel])
         builder.pushLabel(endLabel)
+
+        if (this.initializer) builder.popScope(1, true)
 
         return 0
     }
