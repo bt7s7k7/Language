@@ -60,11 +60,9 @@ namespace of SharedPtr {
 
     template(T is any 0)
     function adopt(value: T) {
-        var valuePtr = *T.alloc()
-        valuePtr.* = value
         return SharedPtr[T] {
             store: SharedPtr.ValueStore[T]!* {
-                value: valuePtr,
+                value: value!alloc,
                 count: 1
             }
         }

@@ -54,6 +54,7 @@ const OPERATORS: OperatorDefinition[] = [
     DEREF_OPERATOR,
     MEMBER_OPERATOR,
     { name: "<int>defer", presentence: 0, text: "!defer", type: "suffix" },
+    { name: "<int>alloc", presentence: 0, text: "!alloc", type: "suffix" },
     { name: "as_slice", text: "[]", type: "prefix", presentence: 0 },
     { name: "as_ptr", text: "*", type: "prefix", presentence: 0 },
     { name: "as_slice", text: "![]", type: "suffix", presentence: 0 },

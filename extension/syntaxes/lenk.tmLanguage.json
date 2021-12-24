@@ -47,7 +47,7 @@
                     "match": " is [a-z]+"
                 },
                 {
-                    "match": "!(as|defer)",
+                    "match": "!(as|defer|alloc)",
                     "captures": {
                         "1": {
                             "name": "keyword.control.lenk"
