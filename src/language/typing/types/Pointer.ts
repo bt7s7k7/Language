@@ -8,6 +8,7 @@ import { Instructions } from "../../vm/Instructions"
 import { IntrinsicFunction } from "../intrinsic/IntrinsicFunction"
 import { Type } from "../Type"
 import { Typing } from "../Typing"
+import { LanguageConstant } from "../Value"
 import { Invocation } from "../values/Invocation"
 import { Never, Void } from "./base"
 import { ConstExpr } from "./ConstExpr"
@@ -18,7 +19,7 @@ import { SpecificFunction } from "./SpecificFunction"
 
 export class Pointer extends InstanceType {
     public assignableTo(other: Type): boolean {
-        return super.assignableTo(other) || (other instanceof Pointer && this.type.assignableTo(other.type))
+        return super.assignableTo(other) || (other instanceof Pointer && this.type.assignableTo(other.type)) || other == Pointer.NULLPTR.type
     }
 
     public getDetail(debug: DebugInfo.Builder) {
@@ -171,6 +172,23 @@ export namespace Pointer {
         }
 
         constructor(public readonly pointerType: Pointer) { super(Span.native, "free") }
+    }
+
+    export const NULLPTR = new class NullPointer extends LanguageConstant {
+        public emit(builder: FunctionIRBuilder): number {
+            EmissionUtil.emitConstant(builder, new Float64Array([0]).buffer)
+            return 8
+        }
+
+        constructor() {
+            super(Span.native, new class NullPointerType extends Type {
+                public assignableTo(other: Type): boolean {
+                    return other instanceof Pointer
+                }
+
+                constructor() { super(Span.native, "nullptr", 8) }
+            })
+        }
     }
 
     export const size = 8

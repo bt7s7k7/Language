@@ -129,6 +129,7 @@ if (ast instanceof Diagnostic) {
     globalScope.register("@as_ptr", new FunctionDefinition(Span.native, "@as_ptr").addOverload(Pointer.AS_POINTER_OPERATOR))
     globalScope.register("@addr", new FunctionDefinition(Span.native, "@addr").addOverload(Pointer.ADDRESS_OF_OPERATOR))
     globalScope.register("@deref", new FunctionDefinition(Span.native, "@deref").addOverload(Pointer.DEREF_OPERATOR))
+    globalScope.register("nullptr", Pointer.NULLPTR)
 
     globalScope.register("@as_slice", new FunctionDefinition(Span.native, "@as_slice").addOverload(Slice.AS_SLICE_OPERATOR))
     globalScope.register("@index", new FunctionDefinition(Span.native, "@index").addOverload(Slice.INDEX_OPERATOR))

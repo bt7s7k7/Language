@@ -12,3 +12,5 @@ export abstract class Value {
         public readonly type: Type
     ) { }
 }
+
+export abstract class LanguageConstant extends Value { }

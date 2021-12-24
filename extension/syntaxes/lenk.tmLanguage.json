@@ -53,6 +53,10 @@
                             "name": "keyword.control.lenk"
                         }
                     }
+                },
+                {
+                    "name": "constant.language.lenk",
+                    "match": "\\b(nullptr)\\b"
                 }
             ]
         },

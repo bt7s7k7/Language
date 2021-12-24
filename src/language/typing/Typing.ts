@@ -36,7 +36,7 @@ import { Slice } from "./types/Slice"
 import { Struct } from "./types/Struct"
 import { TemplatedEntity } from "./types/TemplatedEntity"
 import { normalizeType } from "./util"
-import { Value } from "./Value"
+import { LanguageConstant, Value } from "./Value"
 import { Block } from "./values/Block"
 import { ForLoop } from "./values/ForLoop"
 import { IfStatement } from "./values/IfStatement"
@@ -222,6 +222,7 @@ export namespace Typing {
                 const value = scope.get(node.name)
                 if (!value) throw new ParsingError(new Diagnostic(`Cannot find name "${node.name}"`, node.span))
                 if (value instanceof Type) return value
+                if (value instanceof LanguageConstant) return value
                 if (!(value instanceof Variable)) throw new Error("Found value in scope but it's not a Variable, got " + value.constructor.name)
                 return new VariableDereference(node.span, value)
             } else if (node instanceof NumberLiteral || node instanceof StringLiteral) {

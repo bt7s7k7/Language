@@ -25,7 +25,7 @@ namespace SharedPtr {
 
     function @dispose(this) {
         var store = this->store
-        if (store!as(Number) == 0) {
+        if (store == nullptr) {
             // Uninitialized, nothing to do
             printf(`sh_ptr skip`)
         } else {
@@ -35,7 +35,7 @@ namespace SharedPtr {
                 store->value->@dispose()
             }
 
-            this->store = 0!as(*(SharedPtr.ValueStore[T]))
+            this->store = nullptr
         }
     }
 
