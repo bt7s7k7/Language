@@ -9,6 +9,7 @@ import { IfStatementNode } from "../ast/nodes/IfStatementNode"
 import { InvocationNode } from "../ast/nodes/InvocationNode"
 import { NamespaceNode } from "../ast/nodes/NamespaceNode"
 import { NumberLiteral } from "../ast/nodes/NumberLiteral"
+import { ObjectLiteral } from "../ast/nodes/ObjectLiteral"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
@@ -45,6 +46,7 @@ import { MemberAccess, MethodAccess } from "./values/MemberAccess"
 import { NOP } from "./values/NOP"
 import { Return } from "./values/Return"
 import { StringConstant } from "./values/StringConstant"
+import { AllocValue, ConcatValue, ConstValue } from "./values/util"
 import { Variable } from "./values/Variable"
 import { VariableDereference } from "./values/VariableDereference"
 import { WhileLoop } from "./values/WhileLoop"
@@ -367,6 +369,44 @@ export namespace Typing {
                 const operands = node.elements.map(v => parseExpressionNode(v, scope))
                 const handler = scope.get("__createTuple") as FunctionDefinition
                 return createInvocation(node.span, handler, operands, scope)
+            } else if (node instanceof ObjectLiteral) {
+                let target = parseExpressionNode(node.target, scope)
+                if (!(target instanceof Type)) throw new Error("Expected type")
+
+                let allocate = false
+                if (target instanceof Pointer) {
+                    target = target.type
+                    allocate = true
+                }
+
+                const shape = debug.type(target).detail?.props
+                if (!shape) throw new ParsingError(new Diagnostic(`Type "${target.name}" cannot be used with an object literal, because it does not have properties`, node.span))
+
+                const children: Value[] = []
+                const providedProps = new Set(node.props.keys())
+                for (const propertyInfo of shape) {
+                    if (node.props.has(propertyInfo.name)) {
+                        const prop = node.props.get(propertyInfo.name)!
+                        const value = parseExpressionNode(prop.value, scope)
+                        if (!(value instanceof Value)) throw new ParsingError(new Diagnostic(`Expected value`, prop.value.span))
+                        children.push(value)
+                        providedProps.delete(prop.name)
+                    } else {
+                        const size = debug.types[propertyInfo.type].size
+                        children.push(new ConstValue(node.span, new Type.RawData(size), new ArrayBuffer(size)))
+                    }
+                }
+
+                if (providedProps.size > 0) {
+                    throw new ParsingError(new Diagnostic(`Unknown properties: ${[...providedProps.values()].join(", ")}`, node.span))
+                }
+
+                const result = new ConcatValue(node.span, target, children)
+                if (allocate) {
+                    return new AllocValue(node.span, result)
+                } else {
+                    return result
+                }
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 

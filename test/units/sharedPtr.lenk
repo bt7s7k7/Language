@@ -7,9 +7,7 @@ namespace Foo {
     }
 
     function @invoke(value: []Char) {
-        var self: Foo
-        self.value = value
-        return self
+        return Foo { value: value }
     }
 
     function @dispose(this) {
@@ -62,14 +60,14 @@ namespace of SharedPtr {
 
     template(T is any 0)
     function adopt(value: T) {
-        var self: SharedPtr[T]
-        var store = SharedPtr.ValueStore[T]!*.alloc()
-        var ptr = *T.alloc()
-        ptr.* = value
-        store->value = ptr
-        store->count = 1
-        self.store = store
-        return self
+        var valuePtr = *T.alloc()
+        valuePtr.* = value
+        return SharedPtr[T] {
+            store: SharedPtr.ValueStore[T]!* {
+                value: valuePtr,
+                count: 1
+            }
+        }
     }
 
 }

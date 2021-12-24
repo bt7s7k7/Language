@@ -150,6 +150,33 @@ export namespace Pointer {
         constructor(public readonly pointerType: Pointer) { super(Span.native, "alloc") }
     }
 
+    export class PointerAllocValue extends IntrinsicFunction {
+        public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
+            const error = SpecificFunction.testArguments(span, [{ name: "value", type: this.pointerType.type }], args)
+            if (error) return error
+
+            if (this.pointerType.type.size == Type.NOT_INSTANTIABLE) throw new Error(`Type "${this.pointerType.type.name}" is not instantiable`)
+
+            return {
+                arguments: [],
+                result: this.pointerType,
+                target: this
+            }
+        }
+
+        public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
+            const size = this.pointerType.type.size
+            builder.pushInstruction(Instructions.ALLOC, size)
+            builder.pushInstruction(Instructions.STACK_COPY, 8)
+            EmissionUtil.safeEmit(builder, size, invocation.args[0])
+            builder.pushInstruction(Instructions.STORE_PTR_ALT, size)
+
+            return Pointer.size
+        }
+
+        constructor(public readonly pointerType: Pointer) { super(Span.native, "alloc") }
+    }
+
     export class PointerFree extends IntrinsicFunction {
         public override match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
             const target = [{ name: "self", type: new Pointer(this.pointerType) }]

@@ -1,6 +1,7 @@
 import exp = require("constants")
 import { unreachable } from "../../comTypes/util"
 import { ASTNode } from "../ast/ASTNode"
+import { ComplexSuffixNode } from "../ast/ComplexSuffixNode"
 import { BlockNode } from "../ast/nodes/BlockNode"
 import { DeclarationNode } from "../ast/nodes/DeclarationNode"
 import { ExpressionNode } from "../ast/nodes/ExpressionNode"
@@ -11,6 +12,7 @@ import { IfStatementNode } from "../ast/nodes/IfStatementNode"
 import { InvocationNode } from "../ast/nodes/InvocationNode"
 import { NamespaceNode } from "../ast/nodes/NamespaceNode"
 import { NumberLiteral } from "../ast/nodes/NumberLiteral"
+import { ObjectLiteral } from "../ast/nodes/ObjectLiteral"
 import { OperatorNode } from "../ast/nodes/OperatorNode"
 import { ReturnStatementNode } from "../ast/nodes/ReturnStatement"
 import { RootNode } from "../ast/nodes/RootNode"
@@ -177,7 +179,7 @@ export namespace Parser {
             if (!name) throw new ParsingFailure("Expected namespace name")
             if (name.data == "of") {
                 skipWhitespace()
-                name = parseExpression()
+                name = parseExpression("{")
             }
 
             skipWhitespace()
@@ -341,7 +343,7 @@ export namespace Parser {
                         }
 
                         child.meta = null
-                    } else if (child instanceof InvocationNode && child.target == null) {
+                    } else if (child instanceof ComplexSuffixNode && child.target == null) {
                         if (ii == 0) throw unreachable()
                         const operand = expression.children.splice(ii - 1, 1)[0]
                         child.target = operand
@@ -427,6 +429,10 @@ export namespace Parser {
             result.target = createTuple
 
             return result
+        }
+
+        function parseObjectLiteral(heap: boolean) {
+
         }
 
         function parseNumberLiteral() {
@@ -653,6 +659,31 @@ export namespace Parser {
                         operator.meta = DEFER_OPERATOR
 
                         continue
+                    }
+
+                    if (consume("{")) {
+                        const propertyList = parseEnumerated((): ObjectLiteral.Property | null => {
+                            if (consume(",")) return null
+
+                            const { data: name, span } = consumeWord(true)!
+                            skipWhitespace()
+                            if (!consume(":")) throw new ParsingFailure(`Expected ":"`)
+                            skipWhitespace()
+                            const value = parseExpression()
+
+                            return { name, value, span }
+                        }, null, "}")
+
+                        const properties = new Map<string, ObjectLiteral.Property>()
+
+                        for (const property of propertyList) {
+                            if (!property) continue
+
+                            if (properties.has(property.name)) throw new ParsingFailure(`Duplicate property "${property.name}"`)
+                            properties.set(property.name, property)
+                        }
+
+                        ret.addChild(new ObjectLiteral(start.span(1), properties))
                     }
                 }
 

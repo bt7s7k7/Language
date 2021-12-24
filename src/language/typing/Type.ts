@@ -25,4 +25,10 @@ export namespace Type {
     }
 
     export const NOT_INSTANTIABLE = -1
+
+    export class RawData extends Type {
+        constructor(
+            size: number
+        ) { super(Span.native, `RawData(${size})`, size) }
+    }
 }

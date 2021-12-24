@@ -1,9 +1,8 @@
 import { Span } from "../../Span"
 import { ASTNode } from "../ASTNode"
-import { ExpressionNode } from "./ExpressionNode"
+import { ComplexSuffixNode } from "../ComplexSuffixNode"
 
-export class InvocationNode extends ASTNode {
-    public target!: ASTNode
+export class InvocationNode extends ComplexSuffixNode {
 
     constructor(
         span: Span,

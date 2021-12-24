@@ -314,7 +314,11 @@ export class BytecodeVM {
                 case Instructions.STORE_PTR: {
                     const ptr = this.stack.pop(Pointer.size).as(Float64Array)[0]
                     const value = this.stack.pop(subtype)
-                    //console.log("Ptr store:", ptr, "=", value)
+                    this.storePointer(ptr, value)
+                } break
+                case Instructions.STORE_PTR_ALT: {
+                    const value = this.stack.pop(subtype)
+                    const ptr = this.stack.pop(Pointer.size).as(Float64Array)[0]
                     this.storePointer(ptr, value)
                 } break
                 case Instructions.LOAD_PTR: {

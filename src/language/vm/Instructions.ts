@@ -26,6 +26,7 @@ export namespace Instructions {
     export const STACK_COPY = 16
     export const STACK_SWAP = 17
     export const STACK_PTR = 18
+    export const STORE_PTR_ALT = 19
 
     export const ADD = 101
     export const SUB = 102
@@ -64,6 +65,7 @@ export namespace Instructions {
         [DATA_PTR]: { label: "data_ptr", args: ["data"] },
         [LOAD_PTR]: { label: "load_ptr", subtype: "size" },
         [STORE_PTR]: { label: "store_ptr", subtype: "size" },
+        [STORE_PTR_ALT]: { label: "store_ptr_alt", subtype: "size" },
         [MEMBER]: { label: "member", subtype: "size", args: ["raw", "raw"] },
         [ALLOC]: { label: "alloc", subtype: "size" },
         [FREE]: { label: "free" },
