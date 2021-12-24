@@ -199,6 +199,11 @@ export namespace Typing {
 
                     return new MethodAccess(node.span, target instanceof Type ? null : new MemberAccess(node.span, target, steps), property)
                 }
+
+                if (property instanceof TemplatedEntity) {
+                    return property
+                }
+
                 if (property instanceof ConstExpr) throw unreachable()
                 if (!(property instanceof MemberAccess.Property)) throw unreachable()
 
@@ -253,7 +258,7 @@ export namespace Typing {
                     handler = template.specialization
                 }
 
-                if (node.name == "defer" && operands.length == 1 && operands[0] instanceof Value && !(operands[0] instanceof Reference)) {
+                if (node.name == "defer" && operands.length == 1 && operands[0] instanceof Value && !(operands[0].type instanceof Reference)) {
                     operands[0] = createTempVar(node.span, operands[0], scope)
                 }
 
@@ -321,7 +326,7 @@ export namespace Typing {
                     if (target instanceof FunctionDefinition) return target
                     if (target instanceof Type) {
                         const invokeFunction = scope.getProperty(target, "@invoke")
-                        if (!invokeFunction) throw new ParsingError(new Diagnostic("Target is not invocable", node.span))
+                        if (!invokeFunction) throw new ParsingError(new Diagnostic(`Target "${target.name}" is not invocable`, node.span))
                         if (!(invokeFunction instanceof FunctionDefinition)) unreachable()
                         if (invokeFunction) {
                             return invokeFunction
@@ -344,7 +349,7 @@ export namespace Typing {
                         return handler
                     }
 
-                    throw new ParsingError(new Diagnostic(`Target is not callable`, node.span))
+                    throw new ParsingError(new Diagnostic(`Target "${target instanceof Type ? target.name : ":" + target.type.name}" is not callable`, node.span))
                 })()
 
                 return createInvocation(node.span, func, operands, scope)
@@ -355,8 +360,7 @@ export namespace Typing {
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 
-        function parseFunctionDefinition(namespace: string | Type, func: FunctionDefinitionNode, scope: Scope, name = func.name) {
-            const fullName = namespace ? (namespace instanceof Type ? namespace.name : namespace) + "." + name : name
+        function parseFunctionDefinition(namespace: string | Type, func: FunctionDefinitionNode, scope: Scope, name: string) {
             let resultType = func.type ? parseExpressionNode(func.type, scope) : null
             if (resultType != null && !(resultType instanceof Type)) throw new ParsingError(new Diagnostic("Expected type" + resultType.type.name, func.type!.span))
 
@@ -396,10 +400,10 @@ export namespace Typing {
                 innerScope.register(name, new Variable(argument.span, type, name))
             }
 
-            const self = new ProgramFunction(func.span, fullName, resultType ?? Never.TYPE, args, null!)
-            const definition = new FunctionDefinition(func.span, fullName)
+            const self = new ProgramFunction(func.span, name, resultType ?? Never.TYPE, args, null!)
+            const definition = new FunctionDefinition(func.span, name)
             definition.addOverload(self)
-            innerScope.register(fullName, definition)
+            innerScope.register(name, definition)
 
             const body = func.body == "extern" ? "extern" : parseExpressionNode(func.body, innerScope)
             if (body != "extern" && !(body instanceof Value)) throw new ParsingError(new Diagnostic("Expected value result", func.span))
@@ -413,10 +417,10 @@ export namespace Typing {
             self.regenerateName(definition.name)
             debug.func(self)
 
-            if (rootScope.get(fullName) instanceof FunctionDefinition) {
-                (rootScope.get(fullName) as FunctionDefinition).addOverload(self)
+            if (rootScope.get(name) instanceof FunctionDefinition) {
+                (rootScope.get(name) as FunctionDefinition).addOverload(self)
             } else {
-                rootScope.register(fullName, definition)
+                rootScope.register(name, definition)
             }
 
             createdFunctions.add(self.name)
@@ -438,10 +442,11 @@ export namespace Typing {
 
             if (node.entity instanceof FunctionDefinitionNode) {
                 const name = node.entity.name
-                debug.template(name)
+                const fullName = namespace ? (namespace instanceof Type ? namespace.name : namespace) + "." + name : name
+                debug.template(fullName)
 
-                const template = new TemplatedEntity(node.span, name, node.params, implicit, (scope, args) => {
-                    const specializedName = name + "<" + args.map(v => v.name).join(", ") + ">"
+                const template = new TemplatedEntity(node.span, fullName, node.params, implicit, (scope, args) => {
+                    const specializedName = fullName + "<" + args.map(v => v.name).join(", ") + ">"
                     const memoized = scope.get(specializedName)
                     if (memoized)
                         return memoized as FunctionDefinition
@@ -449,14 +454,14 @@ export namespace Typing {
                     const innerScope = new Scope(scope)
                     node.params.forEach((v, i) => innerScope.register(v.name, args[i]))
                     const func = parseFunctionDefinition(namespace, node.entity as FunctionDefinitionNode, innerScope, specializedName)
-                    debug.template(name).addSpecialization(func)
+                    debug.template(fullName).addSpecialization(func)
 
                     return rootScope.get(specializedName) as FunctionDefinition
                 })
 
-                rootScope.register(name, template)
+                rootScope.register(fullName, template)
 
-                if (implicit) rootScope.registerMany(name, {
+                if (implicit) rootScope.registerMany(fullName, {
                     "@invoke": template.implicitSpecialization
                 })
             } else if (node.entity instanceof NamespaceNode) {
@@ -464,28 +469,29 @@ export namespace Typing {
                 if (name instanceof ExpressionNode) {
                     throw new ParsingError(new Diagnostic("Cannot use extension namespace in template", node.span))
                 }
+                const fullName = namespace ? (namespace instanceof Type ? namespace.name : namespace) + "." + name : name
 
-                debug.template(name)
+                debug.template(fullName)
 
-                const template = new TemplatedEntity(node.span, name, node.params, implicit, (scope, args): any => {
-                    const specializedName = name + "<" + args.map(v => v.name).join(", ") + ">"
+                const template = new TemplatedEntity(node.span, fullName, node.params, implicit, (scope, args): any => {
+                    const specializedName = fullName + "<" + args.map(v => v.name).join(", ") + ">"
                     const memoized = scope.get(specializedName)
                     if (memoized)
                         return memoized as Struct | NamespaceRef
 
                     const innerScope = new Scope(scope)
                     node.params.forEach((v, i) => innerScope.register(v.name, args[i]))
-                    const result = parseNamespace(namespace, node.entity as NamespaceNode, innerScope, specializedName)
+                    const result = parseNamespace(node.entity as NamespaceNode, innerScope, specializedName)
                     if (result instanceof Struct) {
-                        debug.template(name as string).addSpecialization(result)
+                        debug.template(fullName as string).addSpecialization(result)
                     }
 
                     return result
                 })
 
-                rootScope.register(name, template)
+                rootScope.register(fullName, template)
 
-                if (implicit) rootScope.registerMany(name, {
+                if (implicit) rootScope.registerMany(fullName, {
                     "@invoke": template.implicitSpecialization
                 })
             } else throw new ParsingError(new Diagnostic(`Node type ${node.entity.constructor.name} is not suitable for templating`, node.entity.span))
@@ -517,29 +523,28 @@ export namespace Typing {
             return type
         }
 
-        function parseNamespace(namespace: string | Type, node: NamespaceNode, scope: Scope, name = node.name) {
-            if (name instanceof ExpressionNode) {
+        function parseNamespace(node: NamespaceNode, scope: Scope, name: string) {
+            if (node.name instanceof ExpressionNode) {
                 if (node.struct) throw new ParsingError(new Diagnostic("Cannot define struct in extension namespace", node.struct.span))
 
-                const type = parseExpressionNode(name, scope, false)
-                if (!(type instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", name.span))
+                const type = parseExpressionNode(node.name, scope, false)
+                if (!(type instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", node.name.span))
                 next.push(...node.children.map(v => ({ node: v, namespace: type, scope })))
 
                 return type
             }
 
-            const fullName = namespace ? (namespace instanceof Type ? namespace.name : namespace) + "." + name : name
-            next.push(...node.children.map(v => ({ node: v, namespace: fullName, scope })))
-            const ref = scope.get(fullName)
+            next.push(...node.children.map(v => ({ node: v, namespace: name, scope })))
+            const ref = scope.get(name)
             if (ref) {
                 if (!(ref instanceof NamespaceRef) && !(ref instanceof Struct)) throw new ParsingError(new Diagnostic("Duplicate identifier", node.span), new Diagnostic("Defined here", ref.span))
                 if (node.struct) throw new ParsingError(new Diagnostic("Cannot redefine struct", node.span))
                 return ref
             } else {
-                if (node.struct) return parseStruct(fullName, node.struct, scope)
+                if (node.struct) return parseStruct(name, node.struct, scope)
 
-                const ref = new NamespaceRef(node.span, fullName)
-                rootScope.register(fullName, ref)
+                const ref = new NamespaceRef(node.span, name)
+                rootScope.register(name, ref)
                 return ref
             }
 
@@ -556,8 +561,10 @@ export namespace Typing {
                 for (const queued of pending) {
                     const { node, namespace, scope } = queued
                     try {
+
                         if (node instanceof FunctionDefinitionNode) {
-                            parseFunctionDefinition(namespace, node, scope)
+                            const fullName = namespace ? (namespace instanceof Type ? namespace.name : namespace) + "." + node.name : node.name
+                            parseFunctionDefinition(namespace, node, scope, fullName)
                             success = true
                             continue
                         }
@@ -569,7 +576,8 @@ export namespace Typing {
                         }
 
                         if (node instanceof NamespaceNode) {
-                            parseNamespace(namespace, node, scope)
+                            const fullName = node.name instanceof ExpressionNode ? "<extension>" : namespace ? (namespace instanceof Type ? namespace.name : namespace) + "." + node.name : node.name
+                            parseNamespace(node, scope, fullName)
                             success = true
                             continue
                         }

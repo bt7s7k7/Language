@@ -1,0 +1,89 @@
+template(T is any 0)
+function printf(templ: T): Void => extern
+
+namespace Foo {
+    struct {
+        value: []Char
+    }
+
+    function @invoke(value: []Char) {
+        var self: Foo
+        self.value = value
+        return self
+    }
+
+    function @dispose(this) {
+        printf(`Disposed ${this.*.value}`)
+    }
+}
+
+template(T is any 0)
+namespace SharedPtr {
+    struct {
+        store: *(SharedPtr.ValueStore[T])
+    }
+
+    function @dispose(this) {
+        var store = this.*.store
+        if (store!as(Number) == 0) {
+            // Uninitialized, nothing to do
+            printf(`sh_ptr skip`)
+        } else {
+            store.*.count = store.*.count - 1
+            printf(`sh_ptr ${store.*.count}`)
+            if (store.*.count == 0) {
+                store.*.value.*.@dispose()
+            }
+
+            this.*.store = 0!as(*(SharedPtr.ValueStore[T]))
+        }
+    }
+
+    function clone(this) {
+        var store = this.*.store
+        if (store!as(Number) == 0) {
+            //  Uninitialized, nothing to copy
+            return this.*
+        } else {
+            store.*.count = store.*.count + 1
+            return this.*
+        }
+    }
+}
+
+namespace of SharedPtr {
+    template(T)
+    namespace ValueStore {
+        struct {
+            value: *T
+            count: Number
+        }
+    }
+
+    template(T is any 0)
+    function adopt(value: T) {
+        var self: SharedPtr[T]
+        var store = (*(SharedPtr.ValueStore[T])).alloc()
+        var ptr = *T.alloc()
+        ptr.* = value
+        store.*.value = ptr
+        store.*.count = 1
+        self.store = store
+        return self
+    }
+
+}
+
+function main() {
+    var x: SharedPtr[Foo]
+    x!defer
+
+    var f = 1
+    if (f) {
+        var y = SharedPtr.adopt(Foo("alpha"))!defer
+        x = y.clone()
+        printf(`Block end ${x}`)
+    }
+
+    printf(`Func end`)
+}
