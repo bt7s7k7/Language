@@ -153,6 +153,8 @@ if (ast instanceof Diagnostic) {
             assembler.addFunction(func)
         }
 
+        console.log(inspect(program.debug, undefined, Infinity, true))
+
         const build = assembler.build()
         const disassembler = new Disassembler(build)
         for (const disassembly of disassembler) {
