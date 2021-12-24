@@ -56,7 +56,7 @@ function createNumber(name: string, size: number, container: AnyTypedArrayCtor) 
         constructor(
             name: string,
             public readonly operation: (a: number, b: number) => number
-        ) { super(Span.native, name) }
+        ) { super(Span.native, "<native> <const> " + name) }
     }
 
     const CTOR = new class PrimitiveCtor extends IntrinsicFunction {
@@ -82,23 +82,23 @@ function createNumber(name: string, size: number, container: AnyTypedArrayCtor) 
             return size
         }
 
-        constructor() { super(Span.native, name) }
+        constructor() { super(Span.native, "<native> " + name) }
     }
 
     return {
         TYPE,
         CTOR,
         Constant,
-        CONST_ADD: new ConstBinaryOperation("__operator_add", (a, b) => a + b),
-        CONST_SUB: new ConstBinaryOperation("__operator_sub", (a, b) => a - b),
-        CONST_MUL: new ConstBinaryOperation("__operator_mul", (a, b) => a * b),
-        CONST_DIV: new ConstBinaryOperation("__operator_div", (a, b) => a / b),
-        CONST_MOD: new ConstBinaryOperation("__operator_mod", (a, b) => a % b),
-        CONST_EQ: new ConstBinaryOperation("__operator_eq", (a, b) => +(a == b)),
-        CONST_LT: new ConstBinaryOperation("__operator_lt", (a, b) => +(a < b)),
-        CONST_GT: new ConstBinaryOperation("__operator_gt", (a, b) => +(a > b)),
-        CONST_LTE: new ConstBinaryOperation("__operator_lte", (a, b) => +(a <= b)),
-        CONST_GTE: new ConstBinaryOperation("__operator_gte", (a, b) => +(a >= b)),
+        CONST_ADD: new ConstBinaryOperation("@add", (a, b) => a + b),
+        CONST_SUB: new ConstBinaryOperation("@sub", (a, b) => a - b),
+        CONST_MUL: new ConstBinaryOperation("@mul", (a, b) => a * b),
+        CONST_DIV: new ConstBinaryOperation("@div", (a, b) => a / b),
+        CONST_MOD: new ConstBinaryOperation("@mod", (a, b) => a % b),
+        CONST_EQ: new ConstBinaryOperation("@eq", (a, b) => +(a == b)),
+        CONST_LT: new ConstBinaryOperation("@lt", (a, b) => +(a < b)),
+        CONST_GT: new ConstBinaryOperation("@gt", (a, b) => +(a > b)),
+        CONST_LTE: new ConstBinaryOperation("@lte", (a, b) => +(a <= b)),
+        CONST_GTE: new ConstBinaryOperation("@gte", (a, b) => +(a >= b)),
         CONST_NEGATE: new class extends SpecificFunction {
             public match(span: Span, args: SpecificFunction.ArgumentInfo[], context: SpecificFunction.Context): SpecificFunction.Signature | Diagnostic {
                 const types = SpecificFunction.testConstExpr<[number]>(span, [TYPE], args)
@@ -113,7 +113,7 @@ function createNumber(name: string, size: number, container: AnyTypedArrayCtor) 
                 }
             }
 
-            constructor() { super(Span.native, "@negate") }
+            constructor() { super(Span.native, "<native> <const> @negate") }
 
         }
     }

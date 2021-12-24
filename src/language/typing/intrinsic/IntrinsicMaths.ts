@@ -33,7 +33,7 @@ abstract class Operation extends IntrinsicFunction {
         name: string,
         public readonly arity: number,
         public readonly config: { requireTargetReference?: boolean, requirePrimitive?: boolean, resultIsReference?: boolean } = {},
-    ) { super(Span.native, `${name}<T extends any_number>(${Array.from({ length: arity }, () => "T").join(", ")}): T`) }
+    ) { super(Span.native, `<native> ${name}`) }
 }
 
 export namespace IntrinsicMaths {
@@ -56,16 +56,16 @@ export namespace IntrinsicMaths {
         ) { super(name, 2) }
     }
 
-    export const ADD = new BinaryOperation("__operator_add", Instructions.ADD)
-    export const SUB = new BinaryOperation("__operator_sub", Instructions.SUB)
-    export const MUL = new BinaryOperation("__operator_mul", Instructions.MUL)
-    export const DIV = new BinaryOperation("__operator_div", Instructions.DIV)
-    export const MOD = new BinaryOperation("__operator_mod", Instructions.MOD)
-    export const EQ = new BinaryOperation("__operator_eq", Instructions.EQ)
-    export const LT = new BinaryOperation("__operator_lt", Instructions.LT)
-    export const GT = new BinaryOperation("__operator_gt", Instructions.GT)
-    export const LTE = new BinaryOperation("__operator_lt", Instructions.LTE)
-    export const GTE = new BinaryOperation("__operator_gt", Instructions.GTE)
+    export const ADD = new BinaryOperation("@add", Instructions.ADD)
+    export const SUB = new BinaryOperation("@sub", Instructions.SUB)
+    export const MUL = new BinaryOperation("@mul", Instructions.MUL)
+    export const DIV = new BinaryOperation("@div", Instructions.DIV)
+    export const MOD = new BinaryOperation("@mod", Instructions.MOD)
+    export const EQ = new BinaryOperation("@eq", Instructions.EQ)
+    export const LT = new BinaryOperation("@lt", Instructions.LT)
+    export const GT = new BinaryOperation("@gt", Instructions.GT)
+    export const LTE = new BinaryOperation("@lt", Instructions.LTE)
+    export const GTE = new BinaryOperation("@gt", Instructions.GTE)
     export const NEGATE = new class extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
             const type = normalizeType(invocation.type)
@@ -108,8 +108,8 @@ export namespace IntrinsicMaths {
         constructor(name: string, public readonly invert: boolean) { super(name, 2) }
     }
 
-    export const AND = new ShortCircuitOperation("__operator_and", false)
-    export const OR = new ShortCircuitOperation("__operator_or", true)
+    export const AND = new ShortCircuitOperation("@and", false)
+    export const OR = new ShortCircuitOperation("@or", true)
 
     export class Assignment extends Operation implements IIntrinsicRefFunction {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation, noCopy = false) {
@@ -139,6 +139,6 @@ export namespace IntrinsicMaths {
         }
 
 
-        constructor() { super("__operator_assign", 2, { requireTargetReference: true, requirePrimitive: false, resultIsReference: true }) }
+        constructor() { super("@assign", 2, { requireTargetReference: true, requirePrimitive: false, resultIsReference: true }) }
     }
 }

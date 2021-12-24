@@ -353,7 +353,7 @@ export namespace Typing {
                                 self = createTempVar(self.span, self.steps.length == 0 ? self.target : self, scope) as never
                             }
 
-                            const addressOfOperator = scope.get("@addr")
+                            const addressOfOperator = scope.get("@<int>addr")
                             if (!(addressOfOperator instanceof FunctionDefinition)) throw unreachable()
                             operands.unshift(createInvocation(node.span, addressOfOperator, [self], scope))
                         }
@@ -427,7 +427,7 @@ export namespace Typing {
                         if (namespace instanceof Type) {
                             type = new Pointer(namespace)
                         } else {
-                            typeExpr = new OperatorNode(argument.span, "as_ptr")
+                            typeExpr = new OperatorNode(argument.span, "<int>as_ptr")
                             typeExpr.addChild(new IdentifierNode(argument.span, namespace))
                         }
                     } else throw new ParsingError(new Diagnostic("Missing argument type", argument.span))

@@ -93,6 +93,6 @@ export const DEFER = new class DeferOperator extends IntrinsicFunction implement
     }
 
     constructor() {
-        super(Span.native, "@defer")
+        super(Span.native, "<native> @<int>defer")
     }
 }

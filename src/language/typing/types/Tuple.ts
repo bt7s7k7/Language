@@ -77,7 +77,7 @@ export namespace Tuple {
             }
         }
 
-        constructor() { super(Span.native, "@as_slice") }
+        constructor() { super(Span.native, "<native> Tuple.@invoke") }
     }
 
     export const CREATE_TUPLE = new class extends IntrinsicFunction {
@@ -113,6 +113,6 @@ export namespace Tuple {
             return tuple.size
         }
 
-        constructor() { super(Span.native, "__createTuple(...)") }
+        constructor() { super(Span.native, "<native> __createTuple") }
     }
 }

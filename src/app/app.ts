@@ -127,12 +127,12 @@ if (ast instanceof Diagnostic) {
     globalScope.register("@<int>defer", new FunctionDefinition(Span.native, "@<int>defer").addOverload(DEFER))
     globalScope.register("@<int>alloc", new FunctionDefinition(Span.native, "@<int>alloc").addOverload(ALLOC_OPERATOR))
 
-    globalScope.register("@as_ptr", new FunctionDefinition(Span.native, "@as_ptr").addOverload(Pointer.AS_POINTER_OPERATOR))
-    globalScope.register("@addr", new FunctionDefinition(Span.native, "@addr").addOverload(Pointer.ADDRESS_OF_OPERATOR))
+    globalScope.register("@<int>as_ptr", new FunctionDefinition(Span.native, "@<int>as_ptr").addOverload(Pointer.AS_POINTER_OPERATOR))
+    globalScope.register("@<int>addr", new FunctionDefinition(Span.native, "@<int>addr").addOverload(Pointer.ADDRESS_OF_OPERATOR))
     globalScope.register("@deref", new FunctionDefinition(Span.native, "@deref").addOverload(Pointer.DEREF_OPERATOR))
     globalScope.register("nullptr", Pointer.NULLPTR)
 
-    globalScope.register("@as_slice", new FunctionDefinition(Span.native, "@as_slice").addOverload(Slice.AS_SLICE_OPERATOR))
+    globalScope.register("@<int>as_slice", new FunctionDefinition(Span.native, "@<int>as_slice").addOverload(Slice.AS_SLICE_OPERATOR))
     globalScope.register("@index", new FunctionDefinition(Span.native, "@index").addOverload(Slice.INDEX_OPERATOR))
 
     globalScope.register("__createTuple", new FunctionDefinition(Span.native, "__createTuple").addOverload(Tuple.CREATE_TUPLE))

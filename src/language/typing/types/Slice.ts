@@ -80,7 +80,7 @@ export namespace Slice {
             }
         }
 
-        constructor() { super(Span.native, "@as_slice") }
+        constructor() { super(Span.native, "<native> @<int>as_slice") }
     }
 
     export class SliceCtor extends IntrinsicFunction {
@@ -112,7 +112,7 @@ export namespace Slice {
             return Slice.size
         }
 
-        constructor(public readonly sliceType: Slice) { super(Span.native, "__slice_ctor") }
+        constructor(public readonly sliceType: Slice) { super(Span.native, "<native> Slice.@invoke") }
     }
 
     export class SliceCreate extends IntrinsicFunction {
@@ -139,7 +139,7 @@ export namespace Slice {
             return Slice.size
         }
 
-        constructor(public readonly sliceType: Slice) { super(Span.native, "__slice_ctor") }
+        constructor(public readonly sliceType: Slice) { super(Span.native, "<native> Slice.create") }
     }
 
     export function emitConstant(builder: FunctionIRBuilder, ptr: number, size: number) {
@@ -191,7 +191,7 @@ export namespace Slice {
             builder.pushInstruction(Instructions.ADD, Instructions.Types.FLOAT64)
         }
 
-        constructor() { super(Span.native, "@index") }
+        constructor() { super(Span.native, "<native> @index") }
     }
 
     export class SliceAlloc extends IntrinsicFunction {
@@ -215,7 +215,7 @@ export namespace Slice {
             return Slice.size
         }
 
-        constructor(public readonly sliceType: Slice) { super(Span.native, "alloc") }
+        constructor(public readonly sliceType: Slice) { super(Span.native, "<native> Slice.alloc") }
     }
 
     export class SliceFree extends IntrinsicFunction {
@@ -239,7 +239,7 @@ export namespace Slice {
             return 0
         }
 
-        constructor(public readonly sliceType: Slice) { super(Span.native, "free") }
+        constructor(public readonly sliceType: Slice) { super(Span.native, "<native> Slice.@dispose") }
     }
 
     export const size = 16

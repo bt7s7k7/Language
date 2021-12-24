@@ -60,7 +60,7 @@ export namespace Pointer {
             }
         }
 
-        constructor() { super(Span.native, "@as_ptr") }
+        constructor() { super(Span.native, "<native> @<int>as_ptr") }
     }
 
     export const ADDRESS_OF_OPERATOR = new class extends IntrinsicFunction {
@@ -90,7 +90,7 @@ export namespace Pointer {
             return Pointer.size
         }
 
-        constructor() { super(Span.native, "@addr") }
+        constructor() { super(Span.native, "<native> @<int>addr") }
     }
 
     export const DEREF_OPERATOR = new class extends IntrinsicFunction implements IIntrinsicRefFunction {
@@ -125,7 +125,7 @@ export namespace Pointer {
             EmissionUtil.safeEmit(builder, Pointer.size, invocation.args[0])
         }
 
-        constructor() { super(Span.native, "@deref") }
+        constructor() { super(Span.native, "<native> @deref") }
     }
 
     export class PointerAlloc extends IntrinsicFunction {
@@ -147,7 +147,7 @@ export namespace Pointer {
             return Pointer.size
         }
 
-        constructor(public readonly pointerType: Pointer) { super(Span.native, "alloc") }
+        constructor(public readonly pointerType: Pointer) { super(Span.native, "<native> Pointer.alloc") }
     }
 
     export class PointerFree extends IntrinsicFunction {
@@ -171,7 +171,7 @@ export namespace Pointer {
             return 0
         }
 
-        constructor(public readonly pointerType: Pointer) { super(Span.native, "free") }
+        constructor(public readonly pointerType: Pointer) { super(Span.native, "<native> Pointer.@dispose") }
     }
 
     export const NULLPTR = new class NullPointer extends LanguageConstant {
@@ -216,5 +216,5 @@ export const ALLOC_OPERATOR = new class PointerAllocOperator extends IntrinsicFu
         return Pointer.size
     }
 
-    constructor() { super(Span.native, "@<int>alloc") }
+    constructor() { super(Span.native, "<native> @<int>alloc") }
 }
