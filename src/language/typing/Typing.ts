@@ -151,7 +151,7 @@ export namespace Typing {
 
         function createTempVar(span: Span, value: Value, scope: Scope) {
             const name = "_temp_" + tempVarCounter++
-            const variable = new Variable(span, value.type, name)
+            const variable = new Variable(span, normalizeType(value.type), name)
             scope.register(name, variable)
             const handler = (scope.get("@assign") ?? unreachable()) as FunctionDefinition
             return createInvocation(span, handler, [new VariableDereference(span, variable, "declaration"), value], scope)
