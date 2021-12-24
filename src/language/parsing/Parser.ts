@@ -53,6 +53,8 @@ const OPERATORS: OperatorDefinition[] = [
     MEMBER_OPERATOR,
     { name: "as_slice", text: "[]", type: "prefix", presentence: 0 },
     { name: "as_ptr", text: "*", type: "prefix", presentence: 0 },
+    { name: "as_slice", text: "![]", type: "suffix", presentence: 0 },
+    { name: "as_ptr", text: "!*", type: "suffix", presentence: 0 },
     { name: "addr", text: "&", type: "prefix", presentence: 1 },
     { name: "negate", text: "-", type: "prefix", presentence: 1 },
     { name: "mul", text: "*", type: "binary", presentence: 2 },

@@ -20,7 +20,7 @@ namespace Foo {
 template(T is any 0)
 namespace SharedPtr {
     struct {
-        store: *(SharedPtr.ValueStore[T])
+        store: SharedPtr.ValueStore[T]!*
     }
 
     function @dispose(this) {
@@ -63,7 +63,7 @@ namespace of SharedPtr {
     template(T is any 0)
     function adopt(value: T) {
         var self: SharedPtr[T]
-        var store = (*(SharedPtr.ValueStore[T])).alloc()
+        var store = SharedPtr.ValueStore[T]!*.alloc()
         var ptr = *T.alloc()
         ptr.* = value
         store->value = ptr
