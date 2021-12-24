@@ -21,6 +21,7 @@ import { ImplicitSpecializationStrategy, IMPLICIT_SPECIALIZATION_STRATEGY_TYPES,
 import { TupleNode } from "../ast/nodes/TupleNode"
 import { VariableDeclarationNode } from "../ast/nodes/VariableDeclarationNode"
 import { WhileNode } from "../ast/nodes/WhileNode"
+import { ParentNode } from "../ast/ParentNode"
 import { Diagnostic } from "../Diagnostic"
 import { Position } from "../Position"
 import { CharClass } from "./CharClass"
@@ -179,78 +180,75 @@ export namespace Parser {
 
             const namespace = new NamespaceNode(name.span, name instanceof ExpressionNode ? name : name.data)
 
-            for (; ;) {
-                skipWhitespace()
+            skipWhitespace()
 
-                const start = makePos()
+            const start = makePos()
 
-                if (consume("}")) {
-                    break
-                }
-
-                if (consume("struct")) {
-                    if (namespace.struct) throw new ParsingFailure("Duplicate struct definition")
-                    const struct = namespace.struct = new StructNode(start.span(6))
-                    skipWhitespace()
-                    if (!consume("{")) throw new ParsingFailure("Expected struct start \"{\"")
-                    for (; ;) {
-                        skipWhitespace()
-
-                        if (consume("}")) {
-                            break
-                        }
-
-                        const name = consumeWord()
-                        if (!name) throw new ParsingFailure("Expected struct property")
-
-                        skipWhitespace()
-                        if (!consume(":")) throw new ParsingFailure("Expected \":\"")
-                        skipWhitespace()
-                        const type = parseExpression()
-
-                        struct.properties.push(new StructPropertyNode(name.span, name.data, type))
-                        continue
-                    }
-                    continue
-                }
-
-                if (consume("function")) {
-                    namespace.addChild(parseFunctionStatement())
-                    continue
-                }
-
-                throw new ParsingFailure("Unexpected token")
+            if (consume("}")) {
+                return namespace
             }
+
+            if (consume("struct")) {
+                if (namespace.struct) throw new ParsingFailure("Duplicate struct definition")
+                const struct = namespace.struct = new StructNode(start.span(6))
+                skipWhitespace()
+                if (!consume("{")) throw new ParsingFailure("Expected struct start \"{\"")
+                for (; ;) {
+                    skipWhitespace()
+
+                    if (consume("}")) {
+                        break
+                    }
+
+                    const name = consumeWord()
+                    if (!name) throw new ParsingFailure("Expected struct property")
+
+                    skipWhitespace()
+                    if (!consume(":")) throw new ParsingFailure("Expected \":\"")
+                    skipWhitespace()
+                    const type = parseExpression()
+
+                    struct.properties.push(new StructPropertyNode(name.span, name.data, type))
+                    continue
+                }
+            }
+
+            skipWhitespace()
+
+            if (consume("}")) {
+                return namespace
+            }
+
+            parseDefinitions(namespace, () => !!consume("}"))
 
             return namespace
         }
 
-        function parseRoot() {
-            const rootNode = new RootNode(makePos().span(1))
+        function parseDefinitions(target: ParentNode, term: () => boolean) {
             let template: TemplateNode | null = null
 
             function addChild(node: ASTNode) {
                 if (template) {
                     template.entity = node
-                    rootNode.addChild(template)
+                    target.addChild(template)
                     template = null
                 } else {
-                    rootNode.addChild(node)
+                    target.addChild(node)
                 }
             }
 
             for (; ;) {
                 skipWhitespace()
-                if (willEOF()) break
+                if (term()) break
+
+                if (consume("function")) {
+                    addChild(parseFunctionStatement())
+                    continue
+                }
 
                 if (consume("template")) {
                     if (template) throw new ParsingFailure("Cannot nest template definitions")
                     template = parseTemplateDeclaration()
-                    continue
-                }
-
-                if (consume("function")) {
-                    addChild(parseFunctionStatement())
                     continue
                 }
 
@@ -261,6 +259,12 @@ export namespace Parser {
 
                 throw new ParsingFailure("Unexpected character")
             }
+        }
+
+        function parseRoot() {
+            const rootNode = new RootNode(makePos().span(1))
+
+            parseDefinitions(rootNode, () => willEOF())
 
             return rootNode
         }
