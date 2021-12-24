@@ -188,6 +188,7 @@ if (ast instanceof Diagnostic) {
                 const decoder = new TextDecoder()
                 function loadString(slice: MemoryView) {
                     const [ptr, size] = slice.as(Float64Array)
+                    if (ptr == 0) return ""
                     return decoder.decode(vm.loadPointer(ptr, size).as(Uint8Array))
                 }
 
