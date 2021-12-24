@@ -63,7 +63,7 @@ class ParsingError extends Error {
 
 interface QueuedNode {
     node: ASTNode
-    namespace: string
+    namespace: string | Type
     scope: Typing.Scope
 }
 
@@ -355,8 +355,8 @@ export namespace Typing {
             } else throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
         }
 
-        function parseFunctionDefinition(namespace: string, func: FunctionDefinitionNode, scope: Scope, name = func.name) {
-            const fullName = namespace ? namespace + "." + name : name
+        function parseFunctionDefinition(namespace: string | Type, func: FunctionDefinitionNode, scope: Scope, name = func.name) {
+            const fullName = namespace ? (namespace instanceof Type ? namespace.name : namespace) + "." + name : name
             let resultType = func.type ? parseExpressionNode(func.type, scope) : null
             if (resultType != null && !(resultType instanceof Type)) throw new ParsingError(new Diagnostic("Expected type" + resultType.type.name, func.type!.span))
 
@@ -367,20 +367,28 @@ export namespace Typing {
             for (const argument of func.args) {
                 const name = argument.name
                 let typeExpr = argument.type
+                let type: Type | Value | null = null
                 if (!typeExpr) {
                     if (name == "this" && func.args[0] == argument) {
-                        typeExpr = new OperatorNode(argument.span, "as_ptr")
-                        typeExpr.addChild(new IdentifierNode(argument.span, namespace))
+                        if (namespace instanceof Type) {
+                            type = new Pointer(namespace)
+                        } else {
+                            typeExpr = new OperatorNode(argument.span, "as_ptr")
+                            typeExpr.addChild(new IdentifierNode(argument.span, namespace))
+                        }
                     } else throw new ParsingError(new Diagnostic("Missing argument type", argument.span))
                 }
                 if (argument.value) throw unreachable() // TODO: Implement default arguments
 
-                let type = parseExpressionNode(typeExpr, innerScope)
+                if (typeExpr) {
+                    type = parseExpressionNode(typeExpr, innerScope)
+                }
+
                 if (!(type instanceof InstanceType)) {
                     if (type instanceof ConstExpr && type.type instanceof InstanceType) {
                         type = type.type
                     } else {
-                        throw new ParsingError(new Diagnostic("Expected type", typeExpr.span), new Diagnostic("Declared here", type.span))
+                        throw new ParsingError(new Diagnostic("Expected type", typeExpr!.span), new Diagnostic("Declared here", type!.span))
                     }
                 }
 
@@ -416,7 +424,7 @@ export namespace Typing {
             return self
         }
 
-        function parseTemplateDefinition(namespace: string, node: TemplateNode, scope: Scope) {
+        function parseTemplateDefinition(namespace: string | Type, node: TemplateNode, scope: Scope) {
             if (!node.entity) unreachable()
 
             const implicit = !!node.params[0]?.strategy
@@ -453,6 +461,10 @@ export namespace Typing {
                 })
             } else if (node.entity instanceof NamespaceNode) {
                 const name = node.entity.name
+                if (name instanceof ExpressionNode) {
+                    throw new ParsingError(new Diagnostic("Cannot use extension namespace in template", node.span))
+                }
+
                 debug.template(name)
 
                 const template = new TemplatedEntity(node.span, name, node.params, implicit, (scope, args): any => {
@@ -465,7 +477,7 @@ export namespace Typing {
                     node.params.forEach((v, i) => innerScope.register(v.name, args[i]))
                     const result = parseNamespace(namespace, node.entity as NamespaceNode, innerScope, specializedName)
                     if (result instanceof Struct) {
-                        debug.template(name).addSpecialization(result)
+                        debug.template(name as string).addSpecialization(result)
                     }
 
                     return result
@@ -505,8 +517,18 @@ export namespace Typing {
             return type
         }
 
-        function parseNamespace(namespace: string, node: NamespaceNode, scope: Scope, name = node.name) {
-            const fullName = namespace ? namespace + "." + name : name
+        function parseNamespace(namespace: string | Type, node: NamespaceNode, scope: Scope, name = node.name) {
+            if (name instanceof ExpressionNode) {
+                if (node.struct) throw new ParsingError(new Diagnostic("Cannot define struct in extension namespace", node.struct.span))
+
+                const type = parseExpressionNode(name, scope, false)
+                if (!(type instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", name.span))
+                next.push(...node.children.map(v => ({ node: v, namespace: type, scope })))
+
+                return type
+            }
+
+            const fullName = namespace ? (namespace instanceof Type ? namespace.name : namespace) + "." + name : name
             next.push(...node.children.map(v => ({ node: v, namespace: fullName, scope })))
             const ref = scope.get(fullName)
             if (ref) {

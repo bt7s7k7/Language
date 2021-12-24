@@ -36,7 +36,7 @@ function registerSliceMethods(slice: Slice, scope: Typing.Scope) {
         "create": new FunctionDefinition(Span.native, "__slice_create").addOverload(new Slice.SliceCreate(slice)),
         "alloc": new FunctionDefinition(Span.native, "alloc").addOverload(new Slice.SliceAlloc(slice)),
         "@dispose": new FunctionDefinition(Span.native, "@dispose").addOverload(new Slice.SliceFree(slice)),
-        "data": new MemberAccess.Property(Span.native, "data", new Slice(slice.type), 0),
+        "data": new MemberAccess.Property(Span.native, "data", new Pointer(slice.type), 0),
         "length": new MemberAccess.Property(Span.native, "length", Primitives.Number.TYPE, Primitives.Number.TYPE.size)
     })
 }

@@ -25,7 +25,7 @@ export const REINTERPRET_OPERATOR = new class ReinterpretOperator extends Intrin
         const constexpr = args[1].type
         if (!isConstexpr<Type>(constexpr, Type.TYPE)) return new Diagnostic("Expected constant type", span)
         const target = constexpr.value
-        if (target.size != args[0].type.size) throw new Diagnostic("Size of the new type must match the size of the original", args[1].span)
+        if (target.size != args[0].type.size) throw new Diagnostic(`Size of the new type "${target.name}"(${target.size}) must match the size of the original "${args[0].type.name}"(${args[0].type.size})`, args[1].span)
 
         return {
             target: this,

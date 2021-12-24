@@ -26,6 +26,15 @@
         "keywords": {
             "patterns": [
                 {
+                    "match": "\\bnamespace (of)\\b",
+                    "name": "keyword.control.lenk",
+                    "captures": {
+                        "1": {
+                            "name": "storage.modifier.iss.lenk"
+                        }
+                    }
+                },
+                {
                     "name": "keyword.control.lenk",
                     "match": "\\b(if|while|for|return|var|function|namespace|struct|template|extern)\\b"
                 },

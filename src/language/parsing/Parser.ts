@@ -167,12 +167,17 @@ export namespace Parser {
 
         function parseNamespaceDeclaration() {
             skipWhitespace()
-            const name = consumeWord()
+            let name: Token<string> | null | ExpressionNode = consumeWord()
             if (!name) throw new ParsingFailure("Expected namespace name")
+            if (name.data == "of") {
+                skipWhitespace()
+                name = parseExpression()
+            }
+
             skipWhitespace()
             if (!consume("{")) throw new ParsingFailure("Expected namespace start \"{\"")
 
-            const namespace = new NamespaceNode(name.span, name.data)
+            const namespace = new NamespaceNode(name.span, name instanceof ExpressionNode ? name : name.data)
 
             for (; ;) {
                 skipWhitespace()

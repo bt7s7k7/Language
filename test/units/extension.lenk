@@ -1,0 +1,18 @@
+template(T is any 0)
+function printf(templ: T): Void => extern
+
+function readline(): []Char => extern
+
+namespace of []Char {
+    function slice(this, start: Number, length: Number) {
+        var string: []Char
+        string.data = (this.*.data!as(Number) + start)!as(*Char)
+        string.length = length
+        return string
+    }
+}
+
+function main() {
+    var string = "Hello"
+    printf(`${string.slice(1,2)}`)
+}
