@@ -47,6 +47,14 @@ namespace SharedPtr {
             return this.*
         }
     }
+
+    function @deref(this): T!* {
+        if (this->store == nullptr) {
+            return nullptr
+        } else {
+            return this->store->value
+        }
+    }
 }
 
 namespace of SharedPtr {
@@ -80,5 +88,5 @@ function main() {
         printf(`Block end ${x}`)
     }
 
-    printf(`Func end`)
+    printf(`Func end ${x->value}`)
 }

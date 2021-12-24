@@ -265,6 +265,24 @@ export namespace Typing {
                     operands[0] = createTempVar(node.span, operands[0], scope)
                 }
 
+                if (node.name == "deref" && operands.length == 1 && operands[0] instanceof Value) {
+                    if (operands[0].type instanceof Reference) {
+                        const type = normalizeType(operands[0].type)
+                        if (!(type instanceof Pointer)) {
+                            const derefFunction = scope.getProperty(type, "@deref")
+                            if (derefFunction instanceof FunctionDefinition) {
+                                const addrFunction = scope.get("@<int>addr")
+                                if (!(addrFunction instanceof FunctionDefinition)) unreachable()
+
+                                const addrInvocation = createInvocation(node.span, addrFunction, [operands[0]], scope)
+                                if (addrInvocation instanceof Invocation) {
+                                    operands[0] = createInvocation(node.span, derefFunction, [addrInvocation], scope)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 return createInvocation(node.span, handler, operands, scope)
             } else if (node instanceof IfStatementNode) {
                 const predicate = assertValue(parseExpressionNode(node.predicate, scope), node.span)

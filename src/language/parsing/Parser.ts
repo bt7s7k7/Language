@@ -727,7 +727,7 @@ export namespace Parser {
             skipWhitespace()
             const args = consume("(") ? parseEnumerated(() => parseDeclaration(), ",", ")") : []
             skipWhitespace()
-            const type = consume(":") ? (skipWhitespace(), parseExpression()) : null
+            const type = consume(":") ? (skipWhitespace(), parseExpression("{")) : null
             skipWhitespace()
             let body: FunctionDefinitionNode["body"] | null = consume("{") ? parseBlock("}") : null
             if (!body && consume("=>")) {
