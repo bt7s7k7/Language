@@ -39,5 +39,5 @@ export const REINTERPRET_OPERATOR = new class ReinterpretOperator extends Intrin
         return size
     }
 
-    constructor() { super(Span.native, "@reinterpret") }
+    constructor() { super(Span.native, "@<int>reinterpret") }
 }

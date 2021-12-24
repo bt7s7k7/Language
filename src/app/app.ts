@@ -124,7 +124,7 @@ if (ast instanceof Diagnostic) {
         .addOverload(new IntrinsicMaths.Assignment())
     )
 
-    globalScope.register("@defer", new FunctionDefinition(Span.native, "@defer").addOverload(DEFER))
+    globalScope.register("@<int>defer", new FunctionDefinition(Span.native, "@<int>defer").addOverload(DEFER))
 
     globalScope.register("@as_ptr", new FunctionDefinition(Span.native, "@as_ptr").addOverload(Pointer.AS_POINTER_OPERATOR))
     globalScope.register("@addr", new FunctionDefinition(Span.native, "@addr").addOverload(Pointer.ADDRESS_OF_OPERATOR))
@@ -137,7 +137,7 @@ if (ast instanceof Diagnostic) {
     globalScope.register("__createTuple", new FunctionDefinition(Span.native, "__createTuple").addOverload(Tuple.CREATE_TUPLE))
     globalScope.register("Tuple", new FunctionDefinition(Span.native, "Tuple").addOverload(Tuple.TYPE))
 
-    globalScope.register("@reinterpret", new FunctionDefinition(Span.native, "@reinterpret").addOverload(REINTERPRET_OPERATOR))
+    globalScope.register("@<int>reinterpret", new FunctionDefinition(Span.native, "@<int>reinterpret").addOverload(REINTERPRET_OPERATOR))
 
     const program = Typing.parse(ast, globalScope)
     if (program instanceof Array) {

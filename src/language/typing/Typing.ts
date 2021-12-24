@@ -326,7 +326,7 @@ export namespace Typing {
                 )
 
                 if (node.defer) {
-                    const handler = (scope.get("@defer") ?? unreachable()) as FunctionDefinition
+                    const handler = (scope.get("@<int>defer") ?? unreachable()) as FunctionDefinition
                     return createInvocation(node.span, handler, [assignment], scope)
                 }
 

@@ -53,6 +53,7 @@ const MEMBER_OPERATOR: OperatorDefinition = { name: "member", text: ".", type: "
 const OPERATORS: OperatorDefinition[] = [
     DEREF_OPERATOR,
     MEMBER_OPERATOR,
+    { name: "<int>defer", presentence: 0, text: "!defer", type: "suffix" },
     { name: "as_slice", text: "[]", type: "prefix", presentence: 0 },
     { name: "as_ptr", text: "*", type: "prefix", presentence: 0 },
     { name: "as_slice", text: "![]", type: "suffix", presentence: 0 },
@@ -77,8 +78,7 @@ const OPERATORS: OperatorDefinition[] = [
 const MAX_PRESENTENCE = 7
 
 const INDEX_OPERATOR: OperatorDefinition = { name: "index", presentence: 0, text: "[", type: "suffix" }
-const REINTERPRET_OPERATOR: OperatorDefinition = { name: "reinterpret", presentence: 0, text: "!as", type: "suffix" }
-const DEFER_OPERATOR: OperatorDefinition = { name: "defer", presentence: 0, text: "!defer", type: "suffix" }
+const REINTERPRET_OPERATOR: OperatorDefinition = { name: "<int>reinterpret", presentence: 0, text: "!as", type: "suffix" }
 
 export namespace Parser {
     export function parse(file: SourceFile) {
@@ -650,13 +650,6 @@ export namespace Parser {
                         const operator = ret.addChild(new OperatorNode(start.span(3), REINTERPRET_OPERATOR.name))
                         operator.addChildren(args)
                         operator.meta = REINTERPRET_OPERATOR
-
-                        continue
-                    }
-
-                    if (consume("!defer")) {
-                        const operator = ret.addChild(new OperatorNode(start.span(6), DEFER_OPERATOR.name))
-                        operator.meta = DEFER_OPERATOR
 
                         continue
                     }
