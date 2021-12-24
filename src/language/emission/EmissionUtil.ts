@@ -1,6 +1,7 @@
 import { Primitives } from "../typing/Primitives"
 import { Type } from "../typing/Type"
 import { Pointer } from "../typing/types/Pointer"
+import { normalizeType } from "../typing/util"
 import { Value } from "../typing/Value"
 import { Instructions } from "../vm/Instructions"
 import { FunctionIRBuilder } from "./FunctionIRBuilder"
@@ -26,7 +27,7 @@ export namespace EmissionUtil {
 
     export function tryGetTypeCode(type: Type) {
         if (type instanceof Pointer) type = Primitives.Number.TYPE
-        const ret = TYPE_LOOKUP.get(type)
+        const ret = TYPE_LOOKUP.get(normalizeType(type))
         if (!ret) return null
         return ret
     }
