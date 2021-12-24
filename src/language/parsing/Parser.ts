@@ -45,9 +45,12 @@ declare module "../ast/nodes/OperatorNode" {
     }
 }
 
+const DEREF_OPERATOR: OperatorDefinition = { name: "deref", text: ".*", type: "suffix", presentence: 0 }
+const MEMBER_OPERATOR: OperatorDefinition = { name: "member", text: ".", type: "binary", presentence: 0 }
+
 const OPERATORS: OperatorDefinition[] = [
-    { name: "deref", text: ".*", type: "suffix", presentence: 0 },
-    { name: "member", text: ".", type: "binary", presentence: 0 },
+    DEREF_OPERATOR,
+    MEMBER_OPERATOR,
     { name: "as_slice", text: "[]", type: "prefix", presentence: 0 },
     { name: "as_ptr", text: "*", type: "prefix", presentence: 0 },
     { name: "addr", text: "&", type: "prefix", presentence: 1 },
@@ -543,9 +546,8 @@ export namespace Parser {
                     }
 
                     for (const operator of OPERATORS) {
-                        if (matches(operator.text)) {
-                            if (operator.type != "prefix") continue
-                            consume(operator.text)
+                        if (operator.type != "prefix") continue
+                        if (consume(operator.text)) {
                             ret.addChild(new OperatorNode(start.span(operator.text.length), operator.name)).meta = operator
                             continue top
                         }
@@ -598,10 +600,16 @@ export namespace Parser {
                         continue
                     }
                 } else {
+                    if (consume("->")) {
+                        ret.addChild(new OperatorNode(start.span(2), DEREF_OPERATOR.name)).meta = DEREF_OPERATOR
+                        ret.addChild(new OperatorNode(start.span(2), MEMBER_OPERATOR.name)).meta = MEMBER_OPERATOR
+                        hasTarget = false
+                        continue
+                    }
+
                     for (const operator of OPERATORS) {
-                        if (matches(operator.text)) {
-                            if (operator.type == "prefix") continue
-                            consume(operator.text)
+                        if (operator.type == "prefix") continue
+                        if (consume(operator.text)) {
                             if (operator.type == "binary") hasTarget = false
                             ret.addChild(new OperatorNode(start.span(operator.text.length), operator.name)).meta = operator
                             continue top

@@ -13,7 +13,7 @@ namespace Foo {
     }
 
     function @dispose(this) {
-        printf(`Disposed ${this.*.value}`)
+        printf(`Disposed ${this->value}`)
     }
 }
 
@@ -24,28 +24,28 @@ namespace SharedPtr {
     }
 
     function @dispose(this) {
-        var store = this.*.store
+        var store = this->store
         if (store!as(Number) == 0) {
             // Uninitialized, nothing to do
             printf(`sh_ptr skip`)
         } else {
-            store.*.count = store.*.count - 1
-            printf(`sh_ptr ${store.*.count}`)
-            if (store.*.count == 0) {
-                store.*.value.*.@dispose()
+            store->count = store->count - 1
+            printf(`sh_ptr ${store->count}`)
+            if (store->count == 0) {
+                store->value->@dispose()
             }
 
-            this.*.store = 0!as(*(SharedPtr.ValueStore[T]))
+            this->store = 0!as(*(SharedPtr.ValueStore[T]))
         }
     }
 
     function clone(this) {
-        var store = this.*.store
+        var store = this->store
         if (store!as(Number) == 0) {
             //  Uninitialized, nothing to copy
             return this.*
         } else {
-            store.*.count = store.*.count + 1
+            store->count = store->count + 1
             return this.*
         }
     }
@@ -66,8 +66,8 @@ namespace of SharedPtr {
         var store = (*(SharedPtr.ValueStore[T])).alloc()
         var ptr = *T.alloc()
         ptr.* = value
-        store.*.value = ptr
-        store.*.count = 1
+        store->value = ptr
+        store->count = 1
         self.store = store
         return self
     }
