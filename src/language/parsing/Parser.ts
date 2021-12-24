@@ -482,6 +482,7 @@ export namespace Parser {
                         skipWhitespace()
                         const name = consumeWord()
                         if (!name) throw new ParsingFailure("Expected variable name")
+                        const defer = !!consume("!defer")
                         skipWhitespace()
                         let type: ExpressionNode | null = null
                         if (consume(":")) {
@@ -494,7 +495,7 @@ export namespace Parser {
                             skipWhitespace()
                             body = parseExpression()
                         }
-                        ret.addChild(new VariableDeclarationNode(name.span, name.data, type, body))
+                        ret.addChild(new VariableDeclarationNode(name.span, name.data, type, body, defer))
                         hasTarget = true
                         continue
                     }

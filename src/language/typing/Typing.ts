@@ -316,10 +316,19 @@ export namespace Typing {
 
                 const variable = new Variable(node.span, type, name)
                 scope.register(name, variable)
-                if (!body) return new VariableDereference(node.span, variable, "declaration")
-
                 const handler = (scope.get("@assign") ?? unreachable()) as FunctionDefinition
-                return createInvocation(node.span, handler, [new VariableDereference(node.span, variable, "declaration"), body], scope)
+                const assignment = body ? (
+                    createInvocation(node.span, handler, [new VariableDereference(node.span, variable, "declaration"), body], scope)
+                ) : (
+                    new VariableDereference(node.span, variable, "declaration")
+                )
+
+                if (node.defer) {
+                    const handler = (scope.get("@defer") ?? unreachable()) as FunctionDefinition
+                    return createInvocation(node.span, handler, [assignment], scope)
+                }
+
+                return assignment
             } else if (node instanceof InvocationNode) {
                 const target = parseExpressionNode(node.target, scope)
                 const operands = node.args.map(v => parseExpressionNode(v, scope))

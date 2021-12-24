@@ -75,12 +75,11 @@ namespace of SharedPtr {
 }
 
 function main() {
-    var x: SharedPtr[Foo]
-    x!defer
+    var x!defer: SharedPtr[Foo]
 
     var f = 1
     if (f) {
-        var y = SharedPtr.adopt(Foo("alpha"))!defer
+        var y!defer = SharedPtr.adopt(Foo("alpha"))
         x = y.clone()
         printf(`Block end ${x}`)
     }
