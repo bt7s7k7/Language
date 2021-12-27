@@ -5,6 +5,6 @@ import { ExpressionNode } from "./ExpressionNode"
 export class ReturnStatementNode extends ASTNode {
     constructor(
         span: Span,
-        public readonly body: ExpressionNode
+        public readonly body: ExpressionNode | null
     ) { super(span) }
 }

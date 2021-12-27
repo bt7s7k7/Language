@@ -25,7 +25,7 @@ import { Span } from "../Span"
 import { Primitives } from "./Primitives"
 import { Program } from "./Program"
 import { Type } from "./Type"
-import { Never } from "./types/base"
+import { Never, Void } from "./types/base"
 import { ConstExpr, isConstexpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
@@ -77,7 +77,7 @@ class FunctionConstruct {
     public implicitReturnType: Type | null = null
 
     public setReturnType(value: Return) {
-        const type = normalizeType(value.body.type)
+        const type = normalizeType(value.body?.type ?? Void.TYPE)
         if (this.explicitReturnType && !type.assignableTo(this.explicitReturnType)) throw new ParsingError(notAssignable(type, this.explicitReturnType, value.span))
         if (this.implicitReturnType == null) {
             this.implicitReturnType = type
@@ -238,8 +238,8 @@ export namespace Typing {
             } else if (node instanceof ReturnStatementNode) {
                 const construct = scope.construct
                 if (!(construct instanceof FunctionConstruct)) throw new ParsingError(new Diagnostic("Return can only be used in a function definition", node.span))
-                const body = parseExpressionNode(node.body, scope)
-                if (!(body instanceof Value)) throw new ParsingError(new Diagnostic("Expected value", body.span))
+                const body = node.body ? parseExpressionNode(node.body, scope) : null
+                if (body && !(body instanceof Value)) throw new ParsingError(new Diagnostic("Expected value", body.span))
                 const ret = new Return(node.span, body)
                 construct.setReturnType(ret)
                 return ret
