@@ -8,8 +8,11 @@ import { Value } from "../Value"
 export class Return extends Value {
 
     public override emit(builder: FunctionIRBuilder) {
-        const size = this.body.emit(builder)
-        builder.pushInstruction(Instructions.STORE, size, [EmissionUtil.RETURN_VARIABLE_NAME])
+        if (this.body) {
+            const size = this.body.emit(builder)
+            builder.pushInstruction(Instructions.STORE, size, [EmissionUtil.RETURN_VARIABLE_NAME])
+        }
+
         builder.popScope("all", false)
         builder.pushInstruction(Instructions.RETURN)
         return 0
@@ -17,6 +20,6 @@ export class Return extends Value {
 
     constructor(
         span: Span,
-        public readonly body: Value
+        public readonly body: Value | null
     ) { super(span, Never.TYPE) }
 }

@@ -554,6 +554,11 @@ export namespace Parser {
                         break
                     }
 
+                    if (consume("abort")) {
+                        ret.addChild(new ReturnStatementNode(start.span(5), null))
+                        break
+                    }
+
                     for (const operator of OPERATORS) {
                         if (operator.type != "prefix") continue
                         if (consume(operator.text)) {
