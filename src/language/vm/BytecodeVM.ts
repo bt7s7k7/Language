@@ -1,38 +1,11 @@
 import { unreachable } from "../../comTypes/util"
 import { Pointer } from "../typing/types/Pointer"
+import { CoroutineHandle } from "./CoroutineHandle"
 import { ExecutableHeader } from "./ExecutableHeader"
-import { Heap } from "./Heap"
 import { Instructions } from "./Instructions"
-import { Memory, MemoryView } from "./Memory"
+import { MemoryView } from "./Memory"
+import { MemoryMapper } from "./MemoryMapper"
 import { AnyTypedArrayCtor } from "./types"
-
-namespace MemoryMap {
-    export const SEGMENT_SIZE = 3000000000000000
-
-    export const SEGMENTS = [
-        "data",
-        "variableStack",
-        "heap"
-    ] as const
-
-    export function prefixAddress(address: number, segment: (typeof SEGMENTS)[number]) {
-        let i = 0
-        while (SEGMENTS[i] != segment) i++
-        return address + SEGMENT_SIZE * i + 1024
-    }
-
-    export function parseAddress(address: number) {
-        address -= 1024
-        if (address < 0) return [0, "null"] as const
-        let i = 0
-        while (address >= SEGMENT_SIZE) {
-            i++
-            address -= SEGMENT_SIZE
-        }
-
-        return [address, SEGMENTS[i]] as const
-    }
-}
 
 
 interface StackFrame {
@@ -54,14 +27,14 @@ const TYPES: Record<(typeof Instructions.Types)[Exclude<keyof typeof Instruction
 }
 
 export class BytecodeVM {
-    public readonly stack = new Memory()
-    public readonly heap = new Heap()
+    public readonly memoryMap = new MemoryMapper()
     public readonly controlStack: StackFrame[] = []
     public readonly externFunctions = new Map<string, BytecodeVM.ExternFunction>()
+    public activeCoroutine = new CoroutineHandle(this.memoryMap)
 
     public directCall(functionIndex: number, args: ArrayBuffer[], callback: StackFrame["callback"]) {
         for (const arg of args) {
-            this.stack.pushConst(arg)
+            this.activeCoroutine.stack.pushConst(arg)
         }
 
         const frame = this.makeCall(functionIndex)
@@ -77,48 +50,26 @@ export class BytecodeVM {
     }
 
     public storePointer(address: number, data: MemoryView) {
-        const [offset, type] = MemoryMap.parseAddress(address)
-
-        if (type == "null") throw new Error("Tried to store into null page")
-
-        if (type == "variableStack") {
-            return this.stack.write(offset, data)
-        } else if (type == "heap") {
-            this.heap.memory.write(offset, data)
-        } else unreachable()
+        this.memoryMap.writeValue(address, data)
     }
 
     public loadPointer(address: number, size: number) {
-        const [offset, type] = MemoryMap.parseAddress(address)
-
-        if (type == "null") throw new Error("Tried to load from null page")
-
-        if (type == "variableStack") {
-            return this.stack.read(offset, size)
-        } else if (type == "data") {
-            return new MemoryView(this.data, offset, size)
-        } else if (type == "heap") {
-            return this.heap.memory.read(offset, size)
-        } else unreachable()
+        return this.memoryMap.readValue(address, size)
     }
 
     public allocate(size: number) {
-        const offset = this.heap.allocate(size)
-        return MemoryMap.prefixAddress(offset, "heap")
+        return this.memoryMap.allocate(size)
     }
 
     public free(ptr: number) {
-        const [offset, type] = MemoryMap.parseAddress(ptr)
-        if (type == "null") return
-        if (type != "heap") throw new Error("Cannot free address from " + type)
-        this.heap.free(offset)
+        this.memoryMap.freeAddress(ptr)
     }
 
     public resume(data: MemoryView) {
         const entry = this.controlStack.pop()!
         const returnSize = this.makeReturn(entry)
         if (returnSize != data.length) throw new Error(`Tried to resume execution, but returned data size mismatch (${data.length}, ${returnSize})`)
-        if (returnSize != 0) this.stack.write(this.stack.length - returnSize, data)
+        if (returnSize != 0) this.activeCoroutine.stack.write(this.activeCoroutine.stack.length - returnSize, data)
         this.run()
     }
 
@@ -142,15 +93,15 @@ export class BytecodeVM {
                 case Instructions.LOAD: {
                     const ref = ctx.data[ctx.pc]
                     ctx.pc++
-                    const data = this.stack.read(ctx.references[ref], subtype)
+                    const data = this.activeCoroutine.stack.read(ctx.references[ref], subtype)
                     //console.log("Load:", ref, ctx.references[ref], data)
-                    this.stack.push(data)
+                    this.activeCoroutine.stack.push(data)
                 } break
                 case Instructions.STORE: {
                     const ref = ctx.data[ctx.pc]
                     ctx.pc++
-                    const data = this.stack.pop(subtype)
-                    this.stack.write(ctx.references[ref], data)
+                    const data = this.activeCoroutine.stack.pop(subtype)
+                    this.activeCoroutine.stack.write(ctx.references[ref], data)
                     //console.log("Store:", ref, ctx.references[ref], data)
                 } break
                 case Instructions.RETURN: {
@@ -158,7 +109,7 @@ export class BytecodeVM {
                     //console.log("Return")
                     const returnSize = this.makeReturn(entry)
                     if (this.controlStack.length == 0) {
-                        entry.callback?.(this.stack.pop(returnSize))
+                        entry.callback?.(this.activeCoroutine.stack.pop(returnSize))
                         return
                     }
                     ctx = this.controlStack[this.controlStack.length - 1]
@@ -171,97 +122,97 @@ export class BytecodeVM {
                     }
                     const buffer = new Uint32Array(data).buffer.slice(0, subtype)
                     //console.log("Const:", new MemoryView(buffer))
-                    this.stack.pushConst(buffer)
+                    this.activeCoroutine.stack.pushConst(buffer)
                 } break
                 case Instructions.ADD: {
                     const type = TYPES[subtype as keyof typeof TYPES]
                     if (!type) throw new Error("Invalid type")
-                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
-                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const b = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = a + b
                     //console.log("Add:", a, b, res)
-                    this.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.SUB: {
                     const type = TYPES[subtype as keyof typeof TYPES]
                     if (!type) throw new Error("Invalid type")
-                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
-                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const b = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = a - b
                     //console.log("Sub:", a, b, res)
-                    this.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.MUL: {
                     const type = TYPES[subtype as keyof typeof TYPES]
                     if (!type) throw new Error("Invalid type")
-                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
-                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const b = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = a * b
                     //console.log("Mul:", a, b, res)
-                    this.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.DIV: {
                     const type = TYPES[subtype as keyof typeof TYPES]
                     if (!type) throw new Error("Invalid type")
-                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
-                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const b = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = a / b
                     //console.log("Div:", a, b, res)
-                    this.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.MOD: {
                     const type = TYPES[subtype as keyof typeof TYPES]
                     if (!type) throw new Error("Invalid type")
-                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
-                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const b = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = a % b
                     //console.log("Mod:", a, b, res)
-                    this.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.EQ: {
                     const type = TYPES[subtype as keyof typeof TYPES]
                     if (!type) throw new Error("Invalid type")
-                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
-                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const b = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a == b)
                     //console.log("Eq:", a, b, res)
-                    this.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.LT: {
                     const type = TYPES[subtype as keyof typeof TYPES]
                     if (!type) throw new Error("Invalid type")
-                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
-                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const b = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a < b)
                     //console.log("Lt:", a, b, res)
-                    this.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.GT: {
                     const type = TYPES[subtype as keyof typeof TYPES]
                     if (!type) throw new Error("Invalid type")
-                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
-                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const b = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a > b)
                     //console.log("Gt:", a, b, res)
-                    this.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.LTE: {
                     const type = TYPES[subtype as keyof typeof TYPES]
                     if (!type) throw new Error("Invalid type")
-                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
-                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const b = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a <= b)
                     //console.log("Lte:", a, b, res)
-                    this.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.GTE: {
                     const type = TYPES[subtype as keyof typeof TYPES]
                     if (!type) throw new Error("Invalid type")
-                    const b = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
-                    const a = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const b = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a >= b)
                     //console.log("Gte:", a, b, res)
-                    this.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
                 } break
                 case Instructions.BR_FALSE:
                 case Instructions.BR_TRUE: {
@@ -269,7 +220,7 @@ export class BytecodeVM {
                     if (!type) throw new Error("Invalid type")
                     const labelIndex = ctx.data[ctx.pc]
                     ctx.pc++
-                    const predicate = this.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
+                    const predicate = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const label = ctx.function.labels[labelIndex]
                     if (!predicate == !(inst == Instructions.BR_TRUE)) {
                         //console.log("Jump:", label.name)
@@ -286,7 +237,7 @@ export class BytecodeVM {
                     ctx.pc = label.offset
                 } break
                 case Instructions.DROP: {
-                    this.stack.pop(subtype)
+                    this.activeCoroutine.stack.pop(subtype)
                 } break
                 case Instructions.CALL: {
                     const funcNumber = ctx.data[ctx.pc]
@@ -299,64 +250,64 @@ export class BytecodeVM {
                     const ref = ctx.data[ctx.pc]
                     ctx.pc++
                     const offset = ctx.references[ref]
-                    const address = MemoryMap.prefixAddress(offset, "variableStack")
+                    const address = this.activeCoroutine.stackAddress + offset
                     //console.log("Varptr:", offset, "->", address)
-                    this.stack.pushConst(new Float64Array([address]).buffer)
+                    this.activeCoroutine.stack.pushConst(new Float64Array([address]).buffer)
                 } break
                 case Instructions.DATA_PTR: {
                     const ref = ctx.data[ctx.pc]
                     ctx.pc++
                     const offset = this.config.data[ref].offset
-                    const address = MemoryMap.prefixAddress(offset, "data")
+                    const address = this.dataAddress + offset
                     //console.log("Dataptr:", offset, "->", address)
-                    this.stack.pushConst(new Float64Array([address]).buffer)
+                    this.activeCoroutine.stack.pushConst(new Float64Array([address]).buffer)
                 } break
                 case Instructions.STORE_PTR: {
-                    const ptr = this.stack.pop(Pointer.size).as(Float64Array)[0]
-                    const value = this.stack.pop(subtype)
+                    const ptr = this.activeCoroutine.stack.pop(Pointer.size).as(Float64Array)[0]
+                    const value = this.activeCoroutine.stack.pop(subtype)
                     this.storePointer(ptr, value)
                 } break
                 case Instructions.STORE_PTR_ALT: {
-                    const value = this.stack.pop(subtype)
-                    const ptr = this.stack.pop(Pointer.size).as(Float64Array)[0]
+                    const value = this.activeCoroutine.stack.pop(subtype)
+                    const ptr = this.activeCoroutine.stack.pop(Pointer.size).as(Float64Array)[0]
                     this.storePointer(ptr, value)
                 } break
                 case Instructions.LOAD_PTR: {
-                    const ptr = this.stack.pop(Pointer.size).as(Float64Array)[0]
+                    const ptr = this.activeCoroutine.stack.pop(Pointer.size).as(Float64Array)[0]
                     const value = this.loadPointer(ptr, subtype)
                     //console.log("Ptr load:", ptr, "=", value)
-                    this.stack.push(value)
+                    this.activeCoroutine.stack.push(value)
                 } break
                 case Instructions.MEMBER: {
                     const offset = ctx.data[ctx.pc]
                     ctx.pc++
                     const size = ctx.data[ctx.pc]
                     ctx.pc++
-                    const value = this.stack.pop(subtype)
+                    const value = this.activeCoroutine.stack.pop(subtype)
                     const result = value.slice(offset, size)
-                    this.stack.push(result)
+                    this.activeCoroutine.stack.push(result)
                 } break
                 case Instructions.ALLOC: {
                     const ptr = this.allocate(subtype)
-                    this.stack.pushConst(new Float64Array([ptr]).buffer)
+                    this.activeCoroutine.stack.pushConst(new Float64Array([ptr]).buffer)
                 } break
                 case Instructions.FREE: {
-                    const ptr = this.stack.pop(8).as(Float64Array)[0]
+                    const ptr = this.activeCoroutine.stack.pop(8).as(Float64Array)[0]
                     this.free(ptr)
                 } break
                 case Instructions.ALLOC_ARR: {
-                    const length = this.stack.pop(8).as(Float64Array)[0]
+                    const length = this.activeCoroutine.stack.pop(8).as(Float64Array)[0]
                     const ptr = this.allocate(subtype * length)
-                    this.stack.pushConst(new Float64Array([ptr]).buffer)
+                    this.activeCoroutine.stack.pushConst(new Float64Array([ptr]).buffer)
                 } break
                 case Instructions.STACK_COPY: {
-                    const segment = this.stack.peek(subtype)
-                    this.stack.push(segment)
+                    const segment = this.activeCoroutine.stack.peek(subtype)
+                    this.activeCoroutine.stack.push(segment)
                 } break
                 case Instructions.STACK_SWAP: {
-                    const data = this.stack.pop(subtype * 2).clone()
-                    this.stack.push(data.slice(subtype, subtype))
-                    this.stack.push(data.slice(0, subtype))
+                    const data = this.activeCoroutine.stack.pop(subtype * 2).clone()
+                    this.activeCoroutine.stack.push(data.slice(subtype, subtype))
+                    this.activeCoroutine.stack.push(data.slice(0, subtype))
                 } break
                 case Instructions.NUM_CNV: {
                     const sourceTypeCode = subtype & 0xff
@@ -365,8 +316,8 @@ export class BytecodeVM {
                     if (!sourceType) throw new Error("Invalid type")
                     const destType = TYPES[destTypeCode as keyof typeof TYPES]
                     if (!destType) throw new Error("Invalid type")
-                    const source = this.stack.pop(sourceType.BYTES_PER_ELEMENT).as(sourceType)[0]
-                    this.stack.pushConst(new destType([source]).buffer)
+                    const source = this.activeCoroutine.stack.pop(sourceType.BYTES_PER_ELEMENT).as(sourceType)[0]
+                    this.activeCoroutine.stack.pushConst(new destType([source]).buffer)
                 } break
                 default: {
                     throw new Error("Invalid instruction")
@@ -383,7 +334,7 @@ export class BytecodeVM {
         //console.log("Called function", [func.name])
         if (!func) throw unreachable()
         let variableSize = 0
-        let offset = this.stack.length
+        let offset = this.activeCoroutine.stack.length
 
         const references: number[] = []
 
@@ -393,7 +344,7 @@ export class BytecodeVM {
                 argumentsSize += argument.size
             }
 
-            const argumentStart = this.stack.length - argumentsSize
+            const argumentStart = this.activeCoroutine.stack.length - argumentsSize
             argumentsSize = 0
             for (const argument of func.arguments) {
                 references.push(argumentStart + argumentsSize)
@@ -410,7 +361,7 @@ export class BytecodeVM {
             }
         }
 
-        this.stack.expand(variableSize)
+        this.activeCoroutine.stack.expand(variableSize)
 
         const fullSize = argumentsSize + variableSize
         const entry: StackFrame = {
@@ -419,7 +370,7 @@ export class BytecodeVM {
             pc: 0,
             references,
             size: fullSize,
-            stackLen: this.stack.length - fullSize
+            stackLen: this.activeCoroutine.stack.length - fullSize
         }
 
         return entry
@@ -427,25 +378,28 @@ export class BytecodeVM {
 
     protected makeReturn(entry: StackFrame) {
         const expectedStackLength = entry.stackLen + entry.size
-        if (this.stack.length != expectedStackLength) throw new Error("Stack length was not returned to the same value as when the function started (" + this.stack.length + "," + expectedStackLength + ")")
+        if (this.activeCoroutine.stack.length != expectedStackLength) throw new Error("Stack length was not returned to the same value as when the function started (" + this.activeCoroutine.stack.length + "," + expectedStackLength + ")")
         let returnSize = 0
         for (const returns of entry.function.returns) {
             returnSize += returns.size
         }
 
-        const returnValue = this.stack.read(this.stack.length - returnSize, returnSize).clone()
+        const returnValue = this.activeCoroutine.stack.read(this.activeCoroutine.stack.length - returnSize, returnSize).clone()
 
-        this.stack.shrink(entry.size)
-        this.stack.push(returnValue)
+        this.activeCoroutine.stack.shrink(entry.size)
+        this.activeCoroutine.stack.push(returnValue)
 
         return returnSize
     }
 
-
+    public readonly dataAddress
     constructor(
         public readonly config: ExecutableHeader,
         public readonly data: ArrayBuffer
-    ) { }
+    ) {
+        const dataView = new MemoryView(data)
+        this.dataAddress = this.memoryMap.createPage(dataView)
+    }
 }
 
 export namespace BytecodeVM {

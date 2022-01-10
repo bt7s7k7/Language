@@ -261,7 +261,7 @@ export namespace Typing {
                     handler = template.specialization
                 }
 
-                if (node.name == "defer" && operands.length == 1 && operands[0] instanceof Value && !(operands[0].type instanceof Reference)) {
+                if (node.name == "<int>defer" && operands.length == 1 && operands[0] instanceof Value && !(operands[0].type instanceof Reference)) {
                     operands[0] = createTempVar(node.span, operands[0], scope)
                 }
 

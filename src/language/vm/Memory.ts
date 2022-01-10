@@ -1,9 +1,9 @@
 import { AnyTypedArray, AnyTypedArrayCtor } from "./types"
 
 export class Memory {
-    public buffer = new ArrayBuffer(1024)
-    public view = new Uint8Array(this.buffer)
-    public length = 0
+    public buffer
+    public view
+    public length
 
     public expand(size: number) {
         this.length += size
@@ -63,6 +63,20 @@ export class Memory {
         this.expand(size)
         return this.read(start, size)
     }
+
+    constructor(
+        initialSize?: number
+    ) {
+        if (initialSize == undefined) {
+            this.buffer = new ArrayBuffer(1024)
+            this.length = 0
+        } else {
+            this.buffer = new ArrayBuffer(initialSize)
+            this.length = initialSize
+        }
+
+        this.view = new Uint8Array(this.buffer)
+    }
 }
 
 export class MemoryView {
@@ -81,6 +95,14 @@ export class MemoryView {
         if ((offset + size) > this.length) throw new RangeError("Ending is outside the range of the MemoryView")
 
         return new MemoryView(this.buffer, this.offset + offset, size)
+    }
+
+    public read(offset: number, size: number) {
+        return this.slice(offset, size)
+    }
+
+    public write(offset: number, value: MemoryView) {
+        this.getUint8Array().set(value.getUint8Array(), offset)
     }
 
     public clone() {
