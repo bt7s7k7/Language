@@ -4,6 +4,7 @@ import { join } from "path"
 import { createInterface } from "readline"
 import { inspect, TextDecoder, TextEncoder } from "util"
 import { unreachable } from "../comTypes/util"
+import { createGlobalScope } from "../language/createGlobalScope"
 import { DebugInfo } from "../language/DebugInfo"
 import { Diagnostic } from "../language/Diagnostic"
 import { Disassembler, FunctionDisassembly } from "../language/disassembler/Disassembler"
@@ -13,16 +14,9 @@ import { Parser } from "../language/parsing/Parser"
 import { SourceFile } from "../language/parsing/SourceFile"
 import { Position } from "../language/Position"
 import { Span } from "../language/Span"
-import { IntrinsicMaths } from "../language/typing/intrinsic/IntrinsicMaths"
-import { Primitives } from "../language/typing/Primitives"
 import { Type } from "../language/typing/Type"
-import { REINTERPRET_OPERATOR, Void } from "../language/typing/types/base"
-import { DEFER } from "../language/typing/types/DeferOperator"
 import { FunctionDefinition } from "../language/typing/types/FunctionDefinition"
-import { ALLOC_OPERATOR, Pointer } from "../language/typing/types/Pointer"
 import { ProgramFunction } from "../language/typing/types/ProgramFunction"
-import { Slice } from "../language/typing/types/Slice"
-import { Tuple } from "../language/typing/types/Tuple"
 import { Typing } from "../language/typing/Typing"
 import { stringifySpan } from "../language/util"
 import { BytecodeVM } from "../language/vm/BytecodeVM"
@@ -92,55 +86,7 @@ const ast = Parser.parse(new SourceFile(sourcePath, source))
 if (ast instanceof Diagnostic) {
     console.log(inspect(ast, undefined, Infinity, true))
 } else {
-    const globalScope = new Typing.Scope()
-    globalScope.register("Number", Primitives.Number.TYPE)
-    globalScope.registerMany("Number", {
-        "@invoke": new FunctionDefinition(Span.native, "@invoke").addOverload(Primitives.Number.CTOR)
-    })
-    globalScope.register("Char", Primitives.Char.TYPE)
-    globalScope.registerMany("Char", {
-        "@invoke": new FunctionDefinition(Span.native, "@invoke").addOverload(Primitives.Char.CTOR)
-    })
-    globalScope.register("Void", Void.TYPE)
-
-    for (const operatorName of [
-        "ADD", "SUB", "MUL", "DIV",
-        "MOD", "EQ", "LT", "GT", "LTE",
-        "GTE", "NEGATE", "AND", "OR"
-    ]) {
-        const funcName = `@${operatorName.toLowerCase()}`
-        const definition = new FunctionDefinition(Span.native, funcName)
-
-        const intrinsic = (IntrinsicMaths as any)[operatorName]
-        if (intrinsic) definition.addOverload(intrinsic)
-        for (const primitiveName of ["Number", "Char"]) {
-            const constexprFunction = (Primitives as any)[primitiveName][`CONST_${operatorName}`]
-            if (constexprFunction) definition.addOverload(constexprFunction)
-        }
-        globalScope.register(funcName, definition)
-    }
-
-    globalScope.register("@assign", new FunctionDefinition(Span.native, "@assign")
-        .addOverload(new IntrinsicMaths.Assignment())
-    )
-
-    globalScope.register("@<int>defer", new FunctionDefinition(Span.native, "@<int>defer").addOverload(DEFER))
-    globalScope.register("@<int>alloc", new FunctionDefinition(Span.native, "@<int>alloc").addOverload(ALLOC_OPERATOR))
-
-    globalScope.register("@<int>as_ptr", new FunctionDefinition(Span.native, "@<int>as_ptr").addOverload(Pointer.AS_POINTER_OPERATOR))
-    globalScope.register("@<int>addr", new FunctionDefinition(Span.native, "@<int>addr").addOverload(Pointer.ADDRESS_OF_OPERATOR))
-    globalScope.register("@deref", new FunctionDefinition(Span.native, "@deref").addOverload(Pointer.DEREF_OPERATOR))
-    globalScope.register("nullptr", Pointer.NULLPTR)
-
-    globalScope.register("@<int>as_slice", new FunctionDefinition(Span.native, "@<int>as_slice").addOverload(Slice.AS_SLICE_OPERATOR))
-    globalScope.register("@index", new FunctionDefinition(Span.native, "@index").addOverload(Slice.INDEX_OPERATOR))
-
-    globalScope.register("__createTuple", new FunctionDefinition(Span.native, "__createTuple").addOverload(Tuple.CREATE_TUPLE))
-    globalScope.register("Tuple", new FunctionDefinition(Span.native, "Tuple").addOverload(Tuple.TYPE))
-
-    globalScope.register("@<int>reinterpret", new FunctionDefinition(Span.native, "@<int>reinterpret").addOverload(REINTERPRET_OPERATOR))
-
-    const program = Typing.parse(ast, globalScope)
+    const program = Typing.parse(ast, createGlobalScope())
     if (program instanceof Array) {
         console.log(inspect(ast, undefined, Infinity, true))
         console.log(inspect(program, undefined, Infinity, true))
