@@ -1,12 +1,42 @@
 import { unreachable } from "../../comTypes/util"
+import { FORMAT } from "../../textFormat/Formatter"
 import { Assembly } from "../emission/Assembler"
 import { ExecutableHeader } from "../vm/ExecutableHeader"
 import { InstructionInfo, Instructions } from "../vm/Instructions"
 
-export interface FunctionDisassembly {
-    name: string
-    instructions: FunctionDisassembly.Instruction[]
-    header: ExecutableHeader.Function
+export class FunctionDisassembly {
+    public format() {
+        const lines = [
+            "== " + FORMAT.success(this.name) + " =="
+        ]
+
+        if (this.header.offset == -1) {
+            lines.push(FORMAT.warning("EXTERN"))
+        } else {
+            for (const instruction of this.instructions) {
+                if (instruction.label) {
+                    lines.push(FORMAT.primary(instruction.label) + ":")
+                }
+                lines.push(`    ${FORMAT.secondary(instruction.offset.toString(16).padStart(4, "0"))} ${FORMAT.primary(instruction.instruction.label)}${instruction.subtype != null ? `[${FORMAT.secondary(instruction.subtype)}]` : ""} ${instruction.arguments.map(arg =>
+                    arg.type == "const" ? "#" + FORMAT.warning(arg.value + "")
+                        : arg.type == "data" ? FORMAT.success(arg.value + "")
+                            : arg.type == "func" ? FORMAT.success(arg.value + "")
+                                : arg.type == "jump" ? ":" + FORMAT.primary(arg.value.toString(16).padStart(8, "0"))
+                                    : arg.type == "var" ? "$" + FORMAT.success(arg.value + "")
+                                        : arg.type == "raw" ? FORMAT.warning(arg.value + "")
+                                            : unreachable()
+                ).join(", ")}`)
+            }
+        }
+
+        return lines.join("\n")
+    }
+
+    constructor(
+        public readonly name: string,
+        public readonly instructions: FunctionDisassembly.Instruction[],
+        public readonly header: ExecutableHeader.Function
+    ) { }
 }
 
 export namespace FunctionDisassembly {
@@ -105,11 +135,7 @@ export class Disassembler {
             })
         }
 
-        return {
-            name: functionHeader.name,
-            instructions,
-            header: functionHeader
-        }
+        return new FunctionDisassembly(functionHeader.name, instructions, functionHeader)
     }
 
     public findFunction(name: string) {

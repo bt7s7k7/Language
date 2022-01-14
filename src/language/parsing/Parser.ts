@@ -375,7 +375,6 @@ export namespace Parser {
         }
 
         function parseStringLiteral(term: string[] | string, type: StringLiteral["type"]) {
-            const start = makePos()
             const startIndex = index
             const chars: string[] = []
             top: for (; ;) {
@@ -406,7 +405,7 @@ export namespace Parser {
 
             if (type == "char" && chars.length != 1) throw new ParsingFailure(`Character literal must contain exactly 1 character`)
 
-            return new StringLiteral(start.span(index - startIndex), chars.join(""), type)
+            return new StringLiteral(makePos().span(startIndex - index - 1), chars.join(""), type)
         }
 
         function parseTemplateLiteral() {

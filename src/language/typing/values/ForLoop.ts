@@ -15,7 +15,12 @@ export class ForLoop extends Value {
 
         builder.pushScope(`for_init_${id}`)
 
-        this.initializer?.emit(builder)
+        {
+            const size = this.initializer?.emit(builder)
+            if (size != null && size > 0) {
+                builder.pushInstruction(Instructions.DROP, size)
+            }
+        }
 
         builder.pushLabel(startLabel)
         if (this.predicate) {
@@ -33,9 +38,15 @@ export class ForLoop extends Value {
 
         builder.pushScope(`for_body_${id}`)
 
-        this.body.emit(builder)
+        EmissionUtil.safeEmit(builder, 0, this.body)
         builder.pushLabel(incrementLabel)
-        this.increment?.emit(builder)
+
+        {
+            const size = this.increment?.emit(builder)
+            if (size != null && size > 0) {
+                builder.pushInstruction(Instructions.DROP, size)
+            }
+        }
 
         builder.popScope(1, true)
 

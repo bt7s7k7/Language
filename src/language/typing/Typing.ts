@@ -25,7 +25,7 @@ import { Span } from "../Span"
 import { Primitives } from "./Primitives"
 import { Program } from "./Program"
 import { Type } from "./Type"
-import { Never } from "./types/base"
+import { Never, Void } from "./types/base"
 import { ConstExpr, isConstexpr } from "./types/ConstExpr"
 import { FunctionDefinition } from "./types/FunctionDefinition"
 import { InstanceType } from "./types/InstanceType"
@@ -145,7 +145,7 @@ export namespace Typing {
         ) { }
     }
 
-    export function parse(rootNode: RootNode, globalScope: Scope) {
+    export function parse(roots: RootNode[], globalScope: Scope) {
         const rootScope = globalScope
         const createdFunctions = new Set<string>()
         const debug = new DebugInfo.Builder()
@@ -168,7 +168,7 @@ export namespace Typing {
         function createInvocation(span: Span, handler: FunctionDefinition, operands: (Value | Type)[], scope: Scope) {
             const args = operands.map(v => ({ span: v.span, type: v instanceof Value ? v.type : new ConstExpr(v.span, Type.TYPE, v) }))
             const overload = handler.findOverload(span, args, { scope, rootScope, debug })
-            if (overload instanceof Array) throw new ParsingError(new Diagnostic(`Cannot find overload for function "${handler.name}"`, span), ...overload)
+            if (overload instanceof Array) throw new ParsingError(new Diagnostic(`Cannot find overload for function "${handler.name}"`, span, overload))
 
             return overload.result instanceof ConstExpr ? createConstant(overload.result)
                 : new Invocation(span, overload, operands.map(v => v instanceof Value ? v : new NOP(v.span)))
@@ -289,8 +289,9 @@ export namespace Typing {
                 const body = assertValue(parseExpressionNode(node.body, scope), node.span)
                 const bodyElse = node.bodyElse ? assertValue(parseExpressionNode(node.bodyElse, scope), node.span) : null
                 const returns = !root
+                const bodyType = normalizeType(body.type)
                 if (returns) {
-                    if (bodyElse && !bodyElse.type.assignableTo(body.type)) throw new ParsingError(notAssignable(bodyElse.type, body.type, node.span))
+                    if (bodyElse && !bodyElse.type.assignableTo(bodyType)) throw new ParsingError(notAssignable(bodyElse.type, body.type, node.span))
                 }
 
                 if (isConstexpr<number>(predicate.type, Primitives.Number.TYPE)) {
@@ -302,7 +303,7 @@ export namespace Typing {
                     }
                 }
 
-                return new IfStatement(node.span, returns, predicate, body, bodyElse)
+                return new IfStatement(node.span, returns, predicate, body, bodyElse, returns ? bodyType : Void.TYPE)
             } else if (node instanceof WhileNode) {
                 const predicate = assertValue(parseExpressionNode(node.predicate, scope), node.span)
                 const body = assertValue(parseExpressionNode(node.body, scope), node.span)
@@ -618,7 +619,7 @@ export namespace Typing {
 
         }
 
-        let pending: QueuedNode[] = rootNode.children.map(v => ({ node: v, namespace: "", scope: rootScope }))
+        let pending: QueuedNode[] = roots.flatMap(v => v.children.map(v => ({ node: v, namespace: "", scope: rootScope })))
         let next: QueuedNode[] = []
         function parseRoot(scope: Scope) {
             const globalErrors: Diagnostic[] = []

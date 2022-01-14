@@ -2,6 +2,7 @@ import { EmissionUtil } from "../../emission/EmissionUtil"
 import { FunctionIRBuilder } from "../../emission/FunctionIRBuilder"
 import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
+import { Type } from "../Type"
 import { Void } from "../types/base"
 import { Value } from "../Value"
 
@@ -40,6 +41,7 @@ export class IfStatement extends Value {
         public readonly returns: boolean,
         public readonly predicate: Value,
         public readonly body: Value,
-        public readonly bodyElse: Value | null
-    ) { super(span, returns ? body.type : Void.TYPE) }
+        public readonly bodyElse: Value | null,
+        bodyType: Type
+    ) { super(span, bodyType) }
 }
