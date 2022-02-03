@@ -1,8 +1,20 @@
 template(T is any 0)
 function printf(templ: T): Void => extern
 
-function readline(): []Char => extern
+namespace Foo {
+    struct {
+        i: Number
+    }
+}
 
 function main() {
-    printf(`You entered ${readline()!defer.length} characters`)
+    var foo = Foo {i: 0}
+    printf(`i++ init ${foo.i}; ret ${foo.i++}; now ${foo.i}`)
+    printf(`i-- init ${foo.i}; ret ${foo.i--}; now ${foo.i}`)
+    printf(`++i init ${foo.i}; ret ${++foo.i}; now ${foo.i}`)
+    printf(`--i init ${foo.i}; ret ${--foo.i}; now ${foo.i}`)
+
+    /* for (var i = 0; i < 10; i++) {
+        printf(`${i}`)
+    } */
 }

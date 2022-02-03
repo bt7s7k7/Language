@@ -267,6 +267,13 @@ export class BytecodeVM {
                     const value = this.activeCoroutine.stack.pop(subtype)
                     this.storePointer(ptr, value)
                 } break
+                case Instructions.EXCH_PTR: {
+                    const ptr = this.stack.pop(Pointer.size).as(Float64Array)[0]
+                    const value = this.stack.pop(subtype)
+                    const oldValue = this.loadPointer(ptr, subtype).clone()
+                    this.storePointer(ptr, value)
+                    this.stack.push(oldValue)
+                } break
                 case Instructions.STORE_PTR_ALT: {
                     const value = this.activeCoroutine.stack.pop(subtype)
                     const ptr = this.activeCoroutine.stack.pop(Pointer.size).as(Float64Array)[0]

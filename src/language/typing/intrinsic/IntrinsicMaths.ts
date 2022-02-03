@@ -10,6 +10,7 @@ import { IIntrinsicRefFunction, isRefValue, Reference } from "../types/Reference
 import { SpecificFunction } from "../types/SpecificFunction"
 import { normalizeType } from "../util"
 import { Invocation } from "../values/Invocation"
+import { VariableDereference } from "../values/VariableDereference"
 import { IntrinsicFunction } from "./IntrinsicFunction"
 
 abstract class Operation extends IntrinsicFunction {
@@ -83,6 +84,57 @@ export namespace IntrinsicMaths {
 
         constructor() { super("@negate", 1) }
     }
+
+    class ModifyOperation extends Operation {
+        public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
+            const type = normalizeType(invocation.type)
+            const subtype = EmissionUtil.getTypeCode(type)
+            const constant = (type as any)["CONSTANT"] as null | (typeof Primitives.Number.Constant)
+            if (!constant) throw new Error("Cannot create constant for type " + type.name)
+
+            const target = invocation.args[0]
+            if (!isRefValue(target)) unreachable("Target should be ref value")
+
+            if (invocation.args[0] instanceof VariableDereference) {
+                EmissionUtil.safeEmit(builder, type.size, target)
+                if (this.when == "post") builder.pushInstruction(Instructions.STACK_COPY, type.size)
+            } else {
+                target.emitPtr(builder)
+                builder.pushInstruction(Instructions.STACK_COPY, 8)
+                builder.pushInstruction(Instructions.LOAD_PTR, type.size)
+            }
+
+
+            EmissionUtil.safeEmit(builder, type.size, new constant(Span.native, 1))
+            builder.pushInstruction(this.instruction, subtype)
+
+
+            if (invocation.args[0] instanceof VariableDereference) {
+                if (this.when == "pre") builder.pushInstruction(Instructions.STACK_COPY, type.size)
+                target.emitStore(builder)
+            } else {
+                if (this.when == "pre") {
+                    builder.pushInstruction(Instructions.STACK_COPY, type.size)
+                    builder.pushInstruction(Instructions.STORE_PTR, type.size)
+                } else {
+                    builder.pushInstruction(Instructions.EXCH_PTR, type.size)
+                }
+            }
+
+            return type.size
+        }
+
+        constructor(
+            name: string,
+            public readonly instruction: number,
+            public readonly when: "pre" | "post"
+        ) { super(name, 1, { requireTargetReference: true }) }
+    }
+
+    export const INC = new ModifyOperation("@inc", Instructions.ADD, "pre")
+    export const DEC = new ModifyOperation("@dec", Instructions.SUB, "pre")
+    export const POST_INC = new ModifyOperation("@post_inc", Instructions.ADD, "post")
+    export const POST_DEC = new ModifyOperation("@post_dec", Instructions.SUB, "post")
 
     class ShortCircuitOperation extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {

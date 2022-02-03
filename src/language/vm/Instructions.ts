@@ -27,6 +27,7 @@ export namespace Instructions {
     export const STACK_SWAP = 17
     export const STACK_PTR = 18
     export const STORE_PTR_ALT = 19
+    export const EXCH_PTR = 20
 
     export const ADD = 101
     export const SUB = 102
@@ -66,6 +67,7 @@ export namespace Instructions {
         [LOAD_PTR]: { label: "load_ptr", subtype: "size" },
         [STORE_PTR]: { label: "store_ptr", subtype: "size" },
         [STORE_PTR_ALT]: { label: "store_ptr_alt", subtype: "size" },
+        [EXCH_PTR]: { label: "exch_ptr", subtype: "size" },
         [MEMBER]: { label: "member", subtype: "size", args: ["raw", "raw"] },
         [ALLOC]: { label: "alloc", subtype: "size" },
         [FREE]: { label: "free" },
