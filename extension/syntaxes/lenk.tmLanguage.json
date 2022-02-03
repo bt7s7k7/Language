@@ -56,7 +56,7 @@
                 },
                 {
                     "name": "constant.language.lenk",
-                    "match": "\\b(nullptr)\\b"
+                    "match": "\\b(nullptr|true|false)\\b"
                 }
             ]
         },

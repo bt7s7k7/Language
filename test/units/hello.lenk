@@ -5,8 +5,5 @@ function main() {
     var x = 2
     var y = 1
 
-    var z = 2c
-    var w = 2c
-
-    printf(`${x == y || z == w}`)
+    printf(`${x == y || true}`)
 }

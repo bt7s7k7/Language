@@ -563,6 +563,16 @@ export namespace Parser {
                         break
                     }
 
+                    if (consume("true")) {
+                        ret.addChild(new NumberLiteral(start.span(4), 1, "char"))
+                        break
+                    }
+
+                    if (consume("false")) {
+                        ret.addChild(new NumberLiteral(start.span(5), 0, "char"))
+                        break
+                    }
+
                     for (const operator of OPERATORS) {
                         if (operator.type != "prefix") continue
                         if (consume(operator.text)) {
