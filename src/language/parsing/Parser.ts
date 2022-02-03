@@ -59,7 +59,7 @@ const OPERATORS: OperatorDefinition[] = [
     { name: "<int>as_ptr", text: "*", type: "prefix", presentence: 0 },
     { name: "<int>as_slice", text: "![]", type: "suffix", presentence: 0 },
     { name: "<int>as_ptr", text: "!*", type: "suffix", presentence: 0 },
-    { name: "addr", text: "&", type: "prefix", presentence: 1 },
+    { name: "<int>addr", text: "&", type: "prefix", presentence: 1 },
     { name: "inc", text: "++", type: "prefix", presentence: 1 },
     { name: "dec", text: "--", type: "prefix", presentence: 1 },
     { name: "post_inc", text: "++", type: "suffix", presentence: 1 },

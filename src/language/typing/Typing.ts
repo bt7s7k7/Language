@@ -103,6 +103,13 @@ function assertValue(target: Value | Type, span: Span) {
     return target
 }
 
+function assertInstantiable(target: Type, span: Span) {
+    if (target.size == Type.NOT_INSTANTIABLE) {
+        if (target instanceof Struct) throw new ParsingError(new Diagnostic(`Struct "${target.name}" is not finalized`, span))
+        throw new ParsingError(new Diagnostic(`Type "${target.name}" is not instantiable`, span))
+    }
+}
+
 export namespace Typing {
     export class Scope {
         public map = new Map<string, Value | Type>()
@@ -121,7 +128,7 @@ export namespace Typing {
         }
 
         public register(name: string, value: Value | Type) {
-            if (this.map.has(name)) throw new ParsingError(new Diagnostic("Duplicate declaration", value.span), new Diagnostic("Declared here", this.map.get(name)!.span))
+            if (this.map.has(name)) throw new ParsingError(new Diagnostic("Duplicate declaration", value.span, [new Diagnostic("Declared here", this.map.get(name)!.span)]))
             this.map.set(name, value)
             return true
         }
@@ -192,6 +199,7 @@ export namespace Typing {
             for (let i = 0; i < path.length; i++) {
                 let { name, span } = path[i]
                 const type = steps[steps.length - 1]?.type ?? (target instanceof Value ? target.type : target)
+                assertInstantiable(type, span)
                 const property = scope.getProperty(type, name)
 
                 if (!property) throw new ParsingError(new Diagnostic(`Type "${type.name}" does not have property "${name}"`, span))
@@ -390,7 +398,8 @@ export namespace Typing {
                 return createInvocation(node.span, handler, operands, scope)
             } else if (node instanceof ObjectLiteral) {
                 let target = parseExpressionNode(node.target, scope)
-                if (!(target instanceof Type)) throw new Error("Expected type")
+                if (!(target instanceof Type)) throw new ParsingError(new Diagnostic("Expected type", node.target.span))
+                assertInstantiable(target, node.target.span)
 
                 let allocate = false
                 if (target instanceof Pointer) {
@@ -566,17 +575,17 @@ export namespace Typing {
             } else throw new ParsingError(new Diagnostic(`Node type ${node.entity.constructor.name} is not suitable for templating`, node.entity.span))
         }
 
-        function parseStruct(namespace: string, struct: StructNode, scope: Scope) {
+        function parseStruct(namespace: string, struct: StructNode, partial: Struct | undefined, scope: Scope) {
             let offset = 0
             const properties: MemberAccess.Property[] = []
-            const type = new Struct(struct.span, namespace)
+            const type = partial ?? new Struct(struct.span, namespace)
             const innerScope = new Scope(scope)
-            innerScope.register(namespace, type)
+            if (!partial) scope.register(namespace, type)
 
             for (const propertyNode of struct.properties) {
                 const type = parseExpressionNode(propertyNode.type, innerScope)
                 if (!(type instanceof InstanceType)) throw new ParsingError(new Diagnostic("Expected type", type.span))
-                if (type.size == Type.NOT_INSTANTIABLE) throw new ParsingError(new Diagnostic(`Type "${type.name}" is not instantiable`, propertyNode.type.span))
+                assertInstantiable(type, propertyNode.type.span)
                 const property = new MemberAccess.Property(propertyNode.span, propertyNode.name, type, offset)
                 offset += type.size
                 properties.push(property)
@@ -585,7 +594,6 @@ export namespace Typing {
 
             type.finalize(properties, offset, debug)
             rootScope.registerMany(namespace, {
-                "": type,
                 ...Object.fromEntries(properties.map(v => [v.name, v]))
             })
 
@@ -605,16 +613,16 @@ export namespace Typing {
 
             next.push(...node.children.map(v => ({ node: v, namespace: name, scope })))
             const ref = scope.get(name)
-            if (ref) {
+            if (ref && (!(ref instanceof Struct) || ref.finalized)) {
                 if (!(ref instanceof NamespaceRef) && !(ref instanceof Struct)) throw new ParsingError(new Diagnostic("Duplicate identifier", node.span), new Diagnostic("Defined here", ref.span))
                 if (node.struct) throw new ParsingError(new Diagnostic("Cannot redefine struct", node.span))
                 return ref
             } else {
-                if (node.struct) return parseStruct(name, node.struct, scope)
+                if (node.struct) return parseStruct(name, node.struct, ref, scope)
 
-                const ref = new NamespaceRef(node.span, name)
-                rootScope.register(name, ref)
-                return ref
+                const namespaceRef = new NamespaceRef(node.span, name)
+                rootScope.register(name, namespaceRef)
+                return namespaceRef
             }
 
         }
@@ -654,12 +662,8 @@ export namespace Typing {
                         throw new ParsingError(new Diagnostic(`Unknown node type ${node.constructor.name}`, node.span))
                     } catch (err) {
                         if (err instanceof ParsingError) {
-                            if (!(queued.node instanceof NamespaceNode)) {
-                                errors.push(...err.diagnostics)
-                                next.push(queued)
-                            } else {
-                                globalErrors.push(...err.diagnostics)
-                            }
+                            errors.push(...err.diagnostics)
+                            next.push(queued)
                         } else throw err
                     }
                 }

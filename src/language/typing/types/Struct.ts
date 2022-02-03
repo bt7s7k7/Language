@@ -7,6 +7,7 @@ import { InstanceType } from "./InstanceType"
 export class Struct extends InstanceType {
     public properties: MemberAccess.Property[] = []
     public size = Type.NOT_INSTANTIABLE
+    public finalized = false
 
     public getDetail(debug: DebugInfo.Builder) {
         return {
@@ -17,6 +18,7 @@ export class Struct extends InstanceType {
     public finalize(properties: MemberAccess.Property[], size: number, debug: DebugInfo.Builder) {
         this.properties = properties
         this.size = size
+        this.finalized = true
 
         debug.type(this)
             .setDetail(this.getDetail(debug))

@@ -13,8 +13,4 @@ function main() {
     printf(`i-- init ${foo.i}; ret ${foo.i--}; now ${foo.i}`)
     printf(`++i init ${foo.i}; ret ${++foo.i}; now ${foo.i}`)
     printf(`--i init ${foo.i}; ret ${--foo.i}; now ${foo.i}`)
-
-    /* for (var i = 0; i < 10; i++) {
-        printf(`${i}`)
-    } */
 }

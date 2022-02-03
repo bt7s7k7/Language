@@ -1,7 +1,7 @@
 import { Span } from "./Span"
 import { IntrinsicMaths } from "./typing/intrinsic/IntrinsicMaths"
 import { Primitives } from "./typing/Primitives"
-import { Void, REINTERPRET_OPERATOR } from "./typing/types/base"
+import { REINTERPRET_OPERATOR, Void } from "./typing/types/base"
 import { DEFER } from "./typing/types/DeferOperator"
 import { FunctionDefinition } from "./typing/types/FunctionDefinition"
 import { ALLOC_OPERATOR, Pointer } from "./typing/types/Pointer"
@@ -23,7 +23,8 @@ export function createGlobalScope(scope = new Typing.Scope()) {
     for (const operatorName of [
         "ADD", "SUB", "MUL", "DIV",
         "MOD", "EQ", "LT", "GT", "LTE",
-        "GTE", "NEGATE", "AND", "OR"
+        "GTE", "NEGATE", "AND", "OR",
+        "INC", "DEC", "POST_INC", "POST_DEC"
     ]) {
         const funcName = `@${operatorName.toLowerCase()}`
         const definition = new FunctionDefinition(Span.native, funcName)

@@ -1,10 +1,16 @@
 template(T is any 0)
 function printf(templ: T): Void => extern
 
+namespace Foo {
+    struct {
+        i: Number
+    }
+}
+
 function main() {
-    var i = 0
-    printf(`i++ init ${i}; ret ${i++}; now ${i}`)
-    printf(`i-- init ${i}; ret ${i--}; now ${i}`)
-    printf(`++i init ${i}; ret ${++i}; now ${i}`)
-    printf(`--i init ${i}; ret ${--i}; now ${i}`)
+    var foo = Foo {i: 0}
+    printf(`i++ init ${foo.i}; ret ${foo.i++}; now ${foo.i}`)
+    printf(`i-- init ${foo.i}; ret ${foo.i--}; now ${foo.i}`)
+    printf(`++i init ${foo.i}; ret ${++foo.i}; now ${foo.i}`)
+    printf(`--i init ${foo.i}; ret ${--foo.i}; now ${foo.i}`)
 }

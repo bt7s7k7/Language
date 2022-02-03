@@ -54,7 +54,7 @@ export namespace IntrinsicMaths {
         constructor(
             name: string,
             public readonly instruction: number
-        ) { super(name, 2) }
+        ) { super(name, 2, { requirePrimitive: true }) }
     }
 
     export const ADD = new BinaryOperation("@add", Instructions.ADD)
@@ -82,7 +82,7 @@ export namespace IntrinsicMaths {
             return type.size
         }
 
-        constructor() { super("@negate", 1) }
+        constructor() { super("@negate", 1, { requirePrimitive: true }) }
     }
 
     class ModifyOperation extends Operation {
@@ -101,6 +101,7 @@ export namespace IntrinsicMaths {
             } else {
                 target.emitPtr(builder)
                 builder.pushInstruction(Instructions.STACK_COPY, 8)
+                if (this.when == "pre") builder.pushInstruction(Instructions.STACK_COPY, 8)
                 builder.pushInstruction(Instructions.LOAD_PTR, type.size)
             }
 
@@ -114,8 +115,8 @@ export namespace IntrinsicMaths {
                 target.emitStore(builder)
             } else {
                 if (this.when == "pre") {
-                    builder.pushInstruction(Instructions.STACK_COPY, type.size)
-                    builder.pushInstruction(Instructions.STORE_PTR, type.size)
+                    builder.pushInstruction(Instructions.STORE_PTR_ALT, type.size)
+                    builder.pushInstruction(Instructions.LOAD_PTR, type.size)
                 } else {
                     builder.pushInstruction(Instructions.EXCH_PTR, type.size)
                 }
@@ -128,7 +129,7 @@ export namespace IntrinsicMaths {
             name: string,
             public readonly instruction: number,
             public readonly when: "pre" | "post"
-        ) { super(name, 1, { requireTargetReference: true }) }
+        ) { super(name, 1, { requireTargetReference: true, requirePrimitive: true }) }
     }
 
     export const INC = new ModifyOperation("@inc", Instructions.ADD, "pre")

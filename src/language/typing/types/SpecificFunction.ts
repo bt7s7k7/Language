@@ -46,7 +46,7 @@ export namespace SpecificFunction {
                 let targetType = target[i].type
                 if (targetType instanceof Reference) {
                     if (args[i].type.assignableTo(targetType.type)) {
-                        return new Diagnostic(`Argument "${target[i].name}" must be a reference value`, args[i].span)
+                        return new Diagnostic(`Argument of type "${args[i].type.name}" is not a reference value`, args[i].span)
                     } else {
                         targetType = targetType.type
                     }
