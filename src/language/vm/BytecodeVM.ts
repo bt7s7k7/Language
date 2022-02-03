@@ -176,7 +176,7 @@ export class BytecodeVM {
                     const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a == b)
                     //console.log("Eq:", a, b, res)
-                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new Uint8Array([res]).buffer)
                 } break
                 case Instructions.LT: {
                     const type = TYPES[subtype as keyof typeof TYPES]
@@ -185,7 +185,7 @@ export class BytecodeVM {
                     const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a < b)
                     //console.log("Lt:", a, b, res)
-                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new Uint8Array([res]).buffer)
                 } break
                 case Instructions.GT: {
                     const type = TYPES[subtype as keyof typeof TYPES]
@@ -194,7 +194,7 @@ export class BytecodeVM {
                     const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a > b)
                     //console.log("Gt:", a, b, res)
-                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new Uint8Array([res]).buffer)
                 } break
                 case Instructions.LTE: {
                     const type = TYPES[subtype as keyof typeof TYPES]
@@ -203,7 +203,7 @@ export class BytecodeVM {
                     const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a <= b)
                     //console.log("Lte:", a, b, res)
-                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new Uint8Array([res]).buffer)
                 } break
                 case Instructions.GTE: {
                     const type = TYPES[subtype as keyof typeof TYPES]
@@ -212,7 +212,7 @@ export class BytecodeVM {
                     const a = this.activeCoroutine.stack.pop(type.BYTES_PER_ELEMENT).as(type)[0]
                     const res = +(a >= b)
                     //console.log("Gte:", a, b, res)
-                    this.activeCoroutine.stack.pushConst(new type([res]).buffer)
+                    this.activeCoroutine.stack.pushConst(new Uint8Array([res]).buffer)
                 } break
                 case Instructions.BR_FALSE:
                 case Instructions.BR_TRUE: {

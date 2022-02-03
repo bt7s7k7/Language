@@ -5,6 +5,7 @@ import { FunctionIRBuilder } from "../../emission/FunctionIRBuilder"
 import { Span } from "../../Span"
 import { Instructions } from "../../vm/Instructions"
 import { Primitives } from "../Primitives"
+import { Type } from "../Type"
 import { Never } from "../types/base"
 import { IIntrinsicRefFunction, isRefValue, Reference } from "../types/Reference"
 import { SpecificFunction } from "../types/SpecificFunction"
@@ -26,21 +27,21 @@ abstract class Operation extends IntrinsicFunction {
             span: this.span,
             target: this,
             arguments: target,
-            result: this.config.resultIsReference ? new Reference(type) : type
+            result: this.config.overwriteResult ?? (this.config.resultIsReference ? new Reference(type) : type)
         }
     }
 
     constructor(
         name: string,
         public readonly arity: number,
-        public readonly config: { requireTargetReference?: boolean, requirePrimitive?: boolean, resultIsReference?: boolean } = {},
+        public readonly config: { requireTargetReference?: boolean, requirePrimitive?: boolean, resultIsReference?: boolean, overwriteResult?: Type } = {},
     ) { super(Span.native, `<native> ${name}`) }
 }
 
 export namespace IntrinsicMaths {
     class BinaryOperation extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
-            const type = normalizeType(invocation.type)
+            const type = normalizeType(invocation.signature.arguments[0].type)
             const subtype = EmissionUtil.getTypeCode(type)
 
             EmissionUtil.safeEmit(builder, type.size, invocation.args[0])
@@ -48,13 +49,14 @@ export namespace IntrinsicMaths {
 
             builder.pushInstruction(this.instruction, subtype)
 
-            return type.size
+            return this.config.overwriteResult?.size ?? type.size
         }
 
         constructor(
             name: string,
-            public readonly instruction: number
-        ) { super(name, 2, { requirePrimitive: true }) }
+            public readonly instruction: number,
+            { overwriteResult }: { overwriteResult?: Type } = {}
+        ) { super(name, 2, { requirePrimitive: true, overwriteResult }) }
     }
 
     export const ADD = new BinaryOperation("@add", Instructions.ADD)
@@ -62,14 +64,14 @@ export namespace IntrinsicMaths {
     export const MUL = new BinaryOperation("@mul", Instructions.MUL)
     export const DIV = new BinaryOperation("@div", Instructions.DIV)
     export const MOD = new BinaryOperation("@mod", Instructions.MOD)
-    export const EQ = new BinaryOperation("@eq", Instructions.EQ)
-    export const LT = new BinaryOperation("@lt", Instructions.LT)
-    export const GT = new BinaryOperation("@gt", Instructions.GT)
-    export const LTE = new BinaryOperation("@lt", Instructions.LTE)
-    export const GTE = new BinaryOperation("@gt", Instructions.GTE)
+    export const EQ = new BinaryOperation("@eq", Instructions.EQ, { overwriteResult: Primitives.Char.TYPE })
+    export const LT = new BinaryOperation("@lt", Instructions.LT, { overwriteResult: Primitives.Char.TYPE })
+    export const GT = new BinaryOperation("@gt", Instructions.GT, { overwriteResult: Primitives.Char.TYPE })
+    export const LTE = new BinaryOperation("@lt", Instructions.LTE, { overwriteResult: Primitives.Char.TYPE })
+    export const GTE = new BinaryOperation("@gt", Instructions.GTE, { overwriteResult: Primitives.Char.TYPE })
     export const NEGATE = new class extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
-            const type = normalizeType(invocation.type)
+            const type = normalizeType(invocation.signature.arguments[0].type)
             const subtype = EmissionUtil.getTypeCode(type)
             const constant = (type as any)["CONSTANT"] as null | (typeof Primitives.Number.Constant)
             if (!constant) throw new Error("Cannot create constant for type " + type.name)
@@ -87,7 +89,7 @@ export namespace IntrinsicMaths {
 
     class ModifyOperation extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
-            const type = normalizeType(invocation.type)
+            const type = normalizeType(invocation.signature.arguments[0].type)
             const subtype = EmissionUtil.getTypeCode(type)
             const constant = (type as any)["CONSTANT"] as null | (typeof Primitives.Number.Constant)
             if (!constant) throw new Error("Cannot create constant for type " + type.name)
@@ -139,7 +141,7 @@ export namespace IntrinsicMaths {
 
     class ShortCircuitOperation extends Operation {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation) {
-            const type = normalizeType(invocation.type)
+            const type = normalizeType(invocation.signature.arguments[0].type)
             const subtype = EmissionUtil.getTypeCode(type)
             const constant = (type as any)["CONSTANT"] as null | (typeof Primitives.Number.Constant)
             if (!constant) throw new Error("Cannot create constant for type " + type.name)
@@ -166,7 +168,7 @@ export namespace IntrinsicMaths {
 
     export class Assignment extends Operation implements IIntrinsicRefFunction {
         public override emit(builder: FunctionIRBuilder, invocation: Invocation, noCopy = false) {
-            const type = normalizeType(invocation.type)
+            const type = normalizeType(invocation.signature.arguments[0].type)
             const variable = invocation.args[0]
             if (!isRefValue(variable)) throw new Error(`Assignment target '${variable.constructor.name}' is not a ref value`)
 
