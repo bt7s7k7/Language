@@ -122,9 +122,12 @@ export namespace Typing {
 
         public getProperty(type: Type, name: string) {
             type = normalizeType(type)
-            const ret = this.get(type.name + "." + name)
-            if (ret == null && type instanceof Pointer) return this.get(type.type.name + "." + name)
-            return ret
+            const property = this.get(type.name + "." + name)
+            if (property == null && type instanceof Pointer) {
+                const baseProperty = this.get(type.type.name + "." + name)
+                if (baseProperty instanceof FunctionDefinition) return baseProperty
+            }
+            return property
         }
 
         public register(name: string, value: Value | Type) {
@@ -202,7 +205,13 @@ export namespace Typing {
                 assertInstantiable(type, span)
                 const property = scope.getProperty(type, name)
 
-                if (!property) throw new ParsingError(new Diagnostic(`Type "${type.name}" does not have property "${name}"`, span))
+                if (!property) {
+                    throw new ParsingError(new Diagnostic(
+                        `Type "${type.name}" does not have property "${name}"` +
+                        (type instanceof Pointer ? `, did you forget to dereference the pointer?` : ""),
+                        span
+                    ))
+                }
 
                 if (property instanceof FunctionDefinition) {
                     if (i != path.length - 1) throw new ParsingError(new Diagnostic(`Cannot index a method`, span))
