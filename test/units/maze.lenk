@@ -1,0 +1,113 @@
+template(T is any 0)
+function printf(templ: T): Void => extern
+
+function readline(): Char![] => extern
+function random(): Number => extern
+
+namespace World {
+    struct {
+        width: Number
+        height: Number
+        board: Char![]
+        player: Player
+    }
+
+    function @dispose(this) {
+        this->board.@dispose()
+    }
+
+    function draw(this) {
+        var width = this->width
+        var height = this->height
+        var board = this->board
+        var pX = this->player.x
+        var pY = this->player.y
+
+        for (var y = 0; y < height; y = y + 1) {
+            if (y == pY) {
+                printf(.[.[
+                    Char![] { data: (board.data!as(Number) + y * width)!as(Char!*), length: pX },
+                    "O",
+                    Char![] { data: (board.data!as(Number) + y * width + pX + 1)!as(Char!*), length: width - pX }
+                ], .[]])
+            } else {
+                printf(.[.[
+                    Char![] { data: (board.data!as(Number) + y * width)!as(Char!*), length: width }
+                ], .[]])
+            }
+        }
+    }
+
+    function init(this) {
+        this->board = Char![].alloc(this->height * this->width)
+        this->player.world = this
+    }
+}
+
+namespace Player {
+    struct {
+        x: Number
+        y: Number
+        world: World!*
+    }
+
+    function move(this, oX: Number, oY: Number) {
+        var pX = this->x + oX
+        var pY = this->y + oY
+        var width = this->world->width
+        var height = this->world->height
+
+        if (pX >= 0 && pY >= 0 && pX < width && pY < height) {
+            if (this->world->board[pX + pY * width] == ' ') {
+                this->x = pX
+                this->y = pY
+            }
+        }
+    }
+}
+
+function generateBoard(world: World!*) {
+    var width = world->width
+    var height = world->height
+    var board = world->board
+    var pX = world->player.x
+    var pY = world->player.y
+    
+    for (var y = 0; y < height; y = y + 1) for (var x = 0; x < width; x = x + 1) {
+        board[x + y * width] = 
+            if (pX == x || pY == y) ' ' 
+            else if (random() > 0.1) ' '
+            else '#'
+    }
+}
+
+function main() {
+    var world = World {
+        width: 16
+        height: 16
+        player: Player {x: 8, y: 8}
+    }
+    world.init()
+
+
+    generateBoard(&world)
+
+    while (1) {
+        world.draw()
+
+        var input!defer = readline()
+        if (input[0] == 'w') {
+            //world.player.y = world.player.y - 1
+            world.player.move(0, -1)
+        } else if (input[0] == 'a') {
+            //world.player.x = world.player.x - 1
+            world.player.move(-1, 0)
+        } else if (input[0] == 's') {
+            //world.player.y = world.player.y + 1
+            world.player.move(0, 1)
+        } else if (input[0] == 'd') {
+            //world.player.x = world.player.x + 1
+            world.player.move(1, 0)
+        }
+    }
+}
