@@ -146,15 +146,15 @@
             "patterns": [
                 {
                     "name": "constant.numeric.hex.lenk",
-                    "match": "\\b0x?[\\da-fA-F]+\\b"
+                    "match": "\\b0x?[\\da-fA-F]+c?\\b"
                 },
                 {
                     "name": "constant.numeric.binary.lenk",
-                    "match": "\\b0b?[01]+\\b"
+                    "match": "\\b0b?[01]+c?\\b"
                 },
                 {
                     "name": "constant.numeric.decimal.lenk",
-                    "match": "\\b\\d[\\d\\.]*(?:[eE][+-]?\\d+)?\\b"
+                    "match": "\\b\\d[\\d\\.]*(?:[eE][+-]?\\d+)?c?\\b"
                 }
             ]
         },
