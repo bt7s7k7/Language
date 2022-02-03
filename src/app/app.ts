@@ -106,7 +106,8 @@ if (ast instanceof Diagnostic) {
     for (const operatorName of [
         "ADD", "SUB", "MUL", "DIV",
         "MOD", "EQ", "LT", "GT", "LTE",
-        "GTE", "NEGATE", "AND", "OR"
+        "GTE", "NEGATE", "AND", "OR",
+        "INC", "DEC", "POST_INC", "POST_DEC"
     ]) {
         const funcName = `@${operatorName.toLowerCase()}`
         const definition = new FunctionDefinition(Span.native, funcName)

@@ -1,0 +1,10 @@
+template(T is any 0)
+function printf(templ: T): Void => extern
+
+function main() {
+    var i = 0
+    printf(`i++ init ${i}; ret ${i++}; now ${i}`)
+    printf(`i-- init ${i}; ret ${i--}; now ${i}`)
+    printf(`++i init ${i}; ret ${++i}; now ${i}`)
+    printf(`--i init ${i}; ret ${--i}; now ${i}`)
+}
